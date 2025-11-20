@@ -16,7 +16,6 @@ class PeerPiecesAvailability {
 public:
     PeerPiecesAvailability() = default;
     explicit PeerPiecesAvailability(std::string bitfield, size_t size);
-
     bool IsPieceAvailable(size_t piece_index) const;
     void SetPieceAvailability(size_t piece_index);
     size_t Size() const;
@@ -31,6 +30,7 @@ public:
     PeerConnect(const Peer& peer, const TorrentFile& torrent_file, std::string self_peer_id, PieceStorage& piece_storage);
     ~PeerConnect() = default;
 
+    void HandleConnectionError();
     void Run();
     void Terminate();
     bool Failed() const;

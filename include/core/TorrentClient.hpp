@@ -21,8 +21,8 @@ private:
     std::atomic<bool> is_terminated = false;
 
     std::string GenerateRandomSuffix(size_t length = 4);
-    bool RunDownloadMultithread(PieceStorage& pieces,
-                                const TorrentFile& torrentFile,
-                                const TorrentTracker& tracker);
+    bool DownloadMissingPieces(PieceStorage& pieces, const TorrentFile& torrent_file);
+    bool RunDownloadMultithread(PieceStorage& pieces, const TorrentFile& torrent_file,
+                               const TorrentTracker& tracker, bool is_final_attempt = false);
     void DownloadFromTracker(const TorrentFile& torrentFile, PieceStorage& pieces);
 };

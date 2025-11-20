@@ -11,7 +11,7 @@ void PrintUsage(const char* program_name) {
     std::cout << "  -h, --help       Show this help message" << std::endl;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     std::string output_directory;
     std::string torrent_file;
 
