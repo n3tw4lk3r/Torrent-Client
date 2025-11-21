@@ -1,5 +1,6 @@
 #include "utils/BencodeParser.hpp"
 #include "utils/byte_tools.hpp"
+#include <iostream>
 
 std::string utils::BencodeParser::ReadFixedAmount(int amount) {
     std::string result = to_decode.substr(index, amount);
@@ -118,27 +119,18 @@ std::string utils::BencodeParser::GetHash() {
 }
 
 std::vector<std::string> utils::BencodeParser::GetPieceHashes() {
-    int piecesStart = -1, piecesEnd;
-    for (size_t i = 0; i < to_decode.size(); ++i) {
-        if (to_decode.substr(i, 8) == "6:pieces") {
-            index = i + 7;
-            ReadUntilDelimiter(':');
-            piecesStart = index;
-        }
-        if ((piecesStart != -1) && (to_decode.substr(i, 11) == "e8:url-list" || to_decode.substr(i, 2) == "ee")) {
-            piecesEnd = i - 1;
+    for (size_t i = 0; i < parsed.size(); ++i) {
+        if (parsed[i] == "pieces" && i + 1 < parsed.size()) {
+            std::string pieces_data = parsed[i + 1];
+
+            for (size_t j = 0; j + 20 <= pieces_data.size(); j += 20) {
+                pieces_hashes.push_back(pieces_data.substr(j, 20));
+            }
+
+            std::cout << "Extracted " << pieces_hashes.size() << " piece hashes" << std::endl;
             break;
         }
     }
-    int i = piecesStart;
-    for (int cnt = 0; cnt < (piecesEnd - piecesStart + 1) / 20; ++cnt) {
-        std::string pieceHash;
-        for (int j = 0; j < 20; ++j, ++i) {
-            pieceHash += to_decode[i];
-        }
-        pieces_hashes.push_back(pieceHash);
-    }
 
-    std::cout << "total size: " << pieces_hashes.size() << std::endl;
     return pieces_hashes;
 }

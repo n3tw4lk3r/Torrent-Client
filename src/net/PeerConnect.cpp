@@ -29,7 +29,7 @@ size_t PeerPiecesAvailability::Size() const {
 
 PeerConnect::PeerConnect(const Peer& peer, const TorrentFile &torrent_file,
                          std::string self_peer_id, PieceStorage& piece_storage)
-    : socket(peer.ip, peer.port, 10000ms, 15000ms)
+    : socket(peer.ip, peer.port, 7500ms, 7500ms)
     , torrent_file(torrent_file)
     , self_peer_id(std::move(self_peer_id))
     , piece_storage(piece_storage)
@@ -188,29 +188,31 @@ void PeerConnect::MainLoop() {
             }
 
             if (!piece_is_in_progress || piece_is_in_progress->AllBlocksRetrieved()) {
-                piece_is_in_progress = GetNextAvailablePiece();
-                if (!piece_is_in_progress) {
-                    if (piece_storage.QueueIsEmpty()) {
-                        std::cout << "DEBUG: No pieces available from peer "
-                                  << socket.GetIp() << ", terminating" << std::endl;
-                        break;
-                    }
-                    std::this_thread::sleep_for(100ms);
-                    continue;
-                }
-                std::cout << "DEBUG: Started downloading piece "
-                          << piece_is_in_progress->GetIndex() << " from " << socket.GetIp() << std::endl;
-            }
-
-            if (!is_choked && !block_is_pending) {
-                            Block* block = piece_is_in_progress->GetFirstMissingBlock();
-                            if (block) {
-                                RequestPiece(block);
-                                block_is_pending = true;
-                                last_block_request_time = now;
-                                last_activity_time = now;
+                            piece_is_in_progress = GetNextAvailablePiece();
+                            if (!piece_is_in_progress) {
+                                if (piece_storage.QueueIsEmpty()) {
+                                    break;
+                                }
+                                std::this_thread::sleep_for(100ms);
+                                continue;
                             }
                         }
+
+            if (!is_choked && !block_is_pending) {
+                Block* block = piece_is_in_progress->GetFirstMissingBlock();
+                if (block) {
+                    if (piece_is_in_progress->GetIndex() == 1197) {
+                        std::cout << "DEBUG: Requesting block for piece 1197" << std::endl;
+                        std::cout << "Block offset: " << block->offset << std::endl;
+                        std::cout << "Block length: " << block->length << std::endl;
+                    }
+
+                    RequestPiece(block);
+                    block_is_pending = true;
+                    last_block_request_time = now;
+                    last_activity_time = now;
+                }
+            }
 
             std::string received_data = socket.ReceiveData();
             if (!received_data.empty()) {
@@ -228,11 +230,14 @@ void PeerConnect::MainLoop() {
 }
 
 PiecePtr PeerConnect::GetNextAvailablePiece() {
-    static constexpr int max_number_of_attempts = 100;
-
-    for (int attempt = 0; attempt < max_number_of_attempts; ++attempt) {
+    while (!is_terminated) {
         PiecePtr piece = piece_storage.GetNextPieceToDownload();
-        if (!piece) break;
+        if (!piece) {
+            if (piece_storage.IsDownloadComplete()) {
+                break;
+            }
+            continue;
+        }
 
         if (pieces_availability.IsPieceAvailable(piece->GetIndex())) {
             return piece;
@@ -240,7 +245,6 @@ PiecePtr PeerConnect::GetNextAvailablePiece() {
 
         piece_storage.Enqueue(piece);
     }
-
     return nullptr;
 }
 
@@ -281,24 +285,51 @@ void PeerConnect::ProcessMessage(const std::string& message_data) {
                 size_t block_offset = utils::BytesToInt(message.payload.substr(4, 4));
                 std::string block_data = message.payload.substr(8);
 
+if (piece_index == 1197) {
+            std::cout << "=== DEBUG: Received block for piece 1197 ===" << std::endl;
+            std::cout << "Block offset: " << block_offset << std::endl;
+            std::cout << "Block data size: " << block_data.size() << std::endl;
+
+            if (block_data.size() >= 16) {
+                std::cout << "First 8 bytes of block: " << utils::BytesToHex(block_data.substr(0, 8)) << std::endl;
+                std::cout << "Last 8 bytes of block: " << utils::BytesToHex(block_data.substr(block_data.size() - 8)) << std::endl;
+            }
+
+            bool all_zeros = true;
+            for (char c : block_data) {
+                if (c != 0) {
+                    all_zeros = false;
+                    break;
+                }
+            }
+            if (all_zeros) {
+                std::cout << "WARNING: Block for piece 1197 contains only zeros!" << std::endl;
+            }
+        }
+
                 if (piece_is_in_progress && piece_is_in_progress->GetIndex() == piece_index) {
                     piece_is_in_progress->SaveBlock(block_offset, block_data);
                     block_is_pending = false;
 
                     if (piece_is_in_progress->AllBlocksRetrieved()) {
+
                         if (piece_is_in_progress->HashMatches()) {
-                            std::cout << "DEBUG: Piece " << piece_index << " hash matches" << std::endl;
                             piece_storage.PieceProcessed(piece_is_in_progress);
                             piece_is_in_progress.reset();
+
                         } else {
-                            std::cout << "DEBUG: Piece " << piece_index << " hash mismatch, requeuing" << std::endl;
+                            std::cout << "DEBUG: Piece " << piece_index << " hash mismatch from "
+                                      << socket.GetIp() << std::endl;
+
                             piece_is_in_progress->Reset();
                             piece_storage.Enqueue(piece_is_in_progress);
                             piece_is_in_progress.reset();
                         }
+                    } else if (piece_index == 1197) {
+                        std::cout << "DEBUG: Piece 1197 progress - blocks remaining" << std::endl;
                     }
-                } else {
-                    std::cout << "WARNING: Received block for unexpected piece " << piece_index << std::endl;
+                } else if (piece_index == 1197) {
+                    std::cout << "WARNING: Received block for piece 1197 but no piece in progress!" << std::endl;
                 }
             }
             break;

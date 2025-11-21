@@ -22,6 +22,6 @@ private:
 
     std::string GenerateRandomSuffix(size_t length = 4);
     bool RunDownloadMultithread(PieceStorage& pieces, const TorrentFile& torrent_file,
-                               const TorrentTracker& tracker, bool is_final_attempt = false);
+                               const TorrentTracker& tracker);
     void DownloadFromTracker(const TorrentFile& torrentFile, PieceStorage& pieces);
 };

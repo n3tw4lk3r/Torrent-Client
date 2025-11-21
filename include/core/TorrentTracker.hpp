@@ -18,7 +18,7 @@ public:
     std::string GetTrackerUrl() const;
     bool IsWorking() const;
     void PrintStats() const;
-
+void SetPeers(const std::vector<Peer>& new_peers) { peers = new_peers; }
 private:
     bool IsUdpTracker() const;
     bool IsUdpTracker(const std::string& url) const;

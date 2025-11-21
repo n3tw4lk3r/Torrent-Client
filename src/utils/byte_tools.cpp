@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <stdexcept>
 #include <openssl/sha.h>
+#include <iostream>
 
 int utils::BytesToInt(std::string_view bytes) {
     if (bytes.size() < 4)
