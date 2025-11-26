@@ -35,45 +35,47 @@ PeerConnect::PeerConnect(const Peer& peer, const TorrentFile &torrent_file,
     , pieces_availability("", 0)
     , piece_storage(piece_storage) {}
 
-    void PeerConnect::Run() {
-        int total_failures = 0;
-        const int max_total_failures = 20;
+void PeerConnect::Run() {
+    int total_failures = 0;
+    const int max_total_failures = 20;
 
-        while (!is_terminated && total_failures < max_total_failures) {
-            try {
-                try {
-                    socket.CloseConnection();
-                } catch (...) {
+    while (!is_terminated && total_failures < max_total_failures) {
+        try {
+            if (total_failures > 0) {
+                int backoff = std::min(10, total_failures);
+                for (int i = 0; i < backoff * 10 && !is_terminated; ++i) {
+                    std::this_thread::sleep_for(100ms);
                 }
+                if (is_terminated) break;
+            }
 
-                if (total_failures > 0) {
-                    int backoff = std::min(10, total_failures);
-                    std::this_thread::sleep_for(std::chrono::seconds(backoff));
-                }
+            if (is_terminated) break;
 
-                if (EstablishConnection()) {
-                    total_failures = 0;
-                    MainLoop();
-                } else {
-                    total_failures++;
-                }
-            } catch (const std::exception& e) {
+            if (EstablishConnection()) {
+                total_failures = 0;
+                MainLoop();
+            } else {
+                total_failures++;
+            }
+        } catch (const std::exception& e) {
+            if (!is_terminated) {
                 total_failures++;
                 std::cerr << "Peer " << socket.GetIp() << ":" << socket.GetPort()
-                          << " error: " << e.what()
-                          << " (total failures: " << total_failures << ")" << std::endl;
+                            << " error: " << e.what()
+                            << " (total failures: " << total_failures << ")" << std::endl;
                 HandleConnectionError();
             }
         }
-
-        if (total_failures >= max_total_failures) {
-            std::cout << "Permanently giving up on peer " << socket.GetIp()
-                      << " after " << total_failures << " failures" << std::endl;
-            has_failed = true;
-        }
-
-        Terminate();
     }
+
+    if (total_failures >= max_total_failures) {
+        std::cout << "Permanently giving up on peer " << socket.GetIp()
+                    << " after " << total_failures << " failures" << std::endl;
+        has_failed = true;
+    }
+
+    Terminate();
+}
 
 bool PeerConnect::IsTerminated() const {
     return is_terminated;
@@ -216,7 +218,7 @@ void PeerConnect::MainLoop() {
 
             if (block_is_pending && (now - last_block_request_time > block_timeout)) {
                 std::cout << "DEBUG: Block timeout for piece "
-                          << piece_is_in_progress->GetIndex() << ", returning to queue" << std::endl;
+                            << piece_is_in_progress->GetIndex() << ", returning to queue" << std::endl;
                 piece_is_in_progress->Reset();
                 piece_storage.Enqueue(piece_is_in_progress);
                 piece_is_in_progress.reset();
@@ -225,25 +227,19 @@ void PeerConnect::MainLoop() {
             }
 
             if (!piece_is_in_progress || piece_is_in_progress->AllBlocksRetrieved()) {
-                            piece_is_in_progress = GetNextAvailablePiece();
-                            if (!piece_is_in_progress) {
-                                if (piece_storage.QueueIsEmpty()) {
-                                    break;
-                                }
-                                std::this_thread::sleep_for(100ms);
-                                continue;
-                            }
-                        }
+                piece_is_in_progress = GetNextAvailablePiece();
+                if (!piece_is_in_progress) {
+                    if (piece_storage.QueueIsEmpty() || is_terminated) {
+                        break;
+                    }
+                    std::this_thread::sleep_for(100ms);
+                    continue;
+                }
+            }
 
             if (!is_choked && !block_is_pending) {
                 Block* block = piece_is_in_progress->GetFirstMissingBlock();
                 if (block) {
-                    if (piece_is_in_progress->GetIndex() == 1197) {
-                        std::cout << "DEBUG: Requesting block for piece 1197" << std::endl;
-                        std::cout << "Block offset: " << block->offset << std::endl;
-                        std::cout << "Block length: " << block->length << std::endl;
-                    }
-
                     RequestPiece(block);
                     block_is_pending = true;
                     last_block_request_time = now;
@@ -251,7 +247,16 @@ void PeerConnect::MainLoop() {
                 }
             }
 
-            std::string received_data = socket.ReceiveData();
+            std::string received_data;
+            try {
+                received_data = socket.ReceiveData();
+            } catch (const std::runtime_error& e) {
+                if (std::string(e.what()) == "Connection terminated") {
+                    break;
+                }
+                throw;
+            }
+
             if (!received_data.empty()) {
                 ProcessMessage(received_data);
                 last_activity_time = std::chrono::steady_clock::now();

@@ -26,6 +26,7 @@ public:
     void ForceClose();
     const std::string& GetIp() const;
     int GetPort() const;
+    bool IsTerminated() const;
 
 private:
     const std::string ip;
