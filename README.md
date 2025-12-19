@@ -1,4 +1,4 @@
-### Simple-Torrent-Client
+### Torrent-Client
 
 A lightweight C++ BitTorrent client implementation supporting downloads of single-file torrents.
 
@@ -6,9 +6,7 @@ A lightweight C++ BitTorrent client implementation supporting downloads of singl
 - Single-file torrent downloads
 - Multi-threaded peer connections
 - Compact peer protocol support
-- SHA-1 hash verification
 - Progress tracking
-- Configurable timeouts and retries
 
 ## Dependencies
 Required
@@ -41,8 +39,8 @@ brew install cmake openssl curl
 
 ## Build
 ```bash
-git clone https://github.com/n3tw4lk3r/Simple-Torrent-Client
-cd Simple-Torrent-Client
+git clone https://github.com/n3tw4lk3r/Torrent-Client
+cd Torrent-Client
 mkdir build && cd build
 cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
 make -j$(nproc)
@@ -60,12 +58,23 @@ make -j$(nproc)
 ./torrent-client -d ./downloads ./resources/debian-9.3.0-ppc64el-netinst.torrent
 ```
 
-## Key Components
-- TorrentClient: Main client class coordinating download process
-- TorrentTracker: Handles communication with trackers
-- PieceStorage: Manages file pieces and disk storage
-- PeerConnect: Manages individual peer connections
-- BencodeParser: Parses Bencode formatted data
+## Main Components
+- PieceStorage
+Manages file pieces and disk storage
+- TorrentClient
+Main client class coordinating download process
+- TorrentTracker
+Handles communication with TCP trackers
+- UdpTracker
+Handles communication with UDP trackers
+- PeerConnect
+Manages individual peer connections
+- TcpConnect
+Handles TCP connections
+- UdpClient
+Handles UDP connections
+- BencodeParser
+Parses Bencode formatted data
 
 ## Limitations
 - Supports only single-file torrents (no multi-file/directory structure)
@@ -74,7 +83,7 @@ make -j$(nproc)
 - No magnet link support
 
 ## Features To Implement:
-- Multi-file support: Extend PieceStorage and TorrentFile classes
-- DHT support: Implement DHT node and routing table
-- Seeding: Add upload capability to PeerConnect
+- Multi-file support
+- DHT support
+- Seeding
 
