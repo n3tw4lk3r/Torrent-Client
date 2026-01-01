@@ -5,16 +5,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O2 -pthread")
 endif()
 
-# Find dependencies
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
+find_package(Threads REQUIRED)
 
-# Try to find system CPR first
 find_package(cpr QUIET)
 
 if(cpr_FOUND)
@@ -36,5 +34,13 @@ else()
     
     FetchContent_MakeAvailable(cpr)
 endif()
+
+include(FetchContent)
+FetchContent_Declare(
+    ftxui
+    GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI.git
+    GIT_TAG v5.0.0
+)
+FetchContent_MakeAvailable(ftxui)
 
 add_subdirectory(src)

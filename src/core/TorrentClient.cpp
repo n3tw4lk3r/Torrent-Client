@@ -8,8 +8,12 @@
 
 using namespace std::chrono_literals;
 
-TorrentClient::TorrentClient(const std::string& peer_id)
-    : peer_id(peer_id + GenerateRandomSuffix()) {}
+TorrentClient::TorrentClient(const std::string& peerId) :
+    peer_id(peerId + GenerateRandomSuffix())
+{
+    current_task.start_time = std::chrono::system_clock::now();
+    AddLogMessage("Torrent client initialized");
+}
 
 std::string TorrentClient::GenerateRandomSuffix(size_t length) {
     static std::random_device random;
@@ -289,4 +293,81 @@ void TorrentClient::DownloadTorrent(const std::filesystem::path& torrent_file_pa
         pieces.PrintMissingPieces();
         pieces.PrintDownloadStatus();
     }
+}
+
+void TorrentClient::AddLogMessage(const std::string& message) {
+    std::lock_guard<std::mutex> lock(log_mutex);
+    
+    auto now = std::chrono::system_clock::now();
+    auto time = std::chrono::system_clock::to_time_t(now);
+    char time_string[20]; // have to use char[]
+    std::strftime(time_string, sizeof(time_string), "[%H:%M:%S]", std::localtime(&time));
+    
+    log_messages.push_back(std::string(time_string) + " " + message);
+    
+    if (log_messages.size() > 1000) {
+        log_messages.erase(log_messages.begin(), log_messages.begin() + 500);
+    }
+}
+
+TorrentTask TorrentClient::GetCurrentTask() const {
+    std::lock_guard<std::mutex> lock(task_mutex);
+    return current_task;
+}
+
+std::vector<std::string> TorrentClient::GetLogMessages(size_t maxCount) const {
+    std::lock_guard<std::mutex> lock(log_mutex);
+    
+    if (log_messages.size() <= maxCount) {
+        return log_messages;
+    }
+    
+    return std::vector<std::string>(
+        log_messages.end() - maxCount,
+        log_messages.end()
+    );
+}
+
+void TorrentClient::UpdateTaskStatus(TorrentStatus status) {
+    std::lock_guard<std::mutex> lock(task_mutex);
+    current_task.status = status;
+    current_task.last_update = std::chrono::system_clock::now();
+}
+
+void TorrentClient::UpdateTaskFromPieceStorage(const PieceStorage& storage) {
+    std::lock_guard<std::mutex> lock(task_mutex);
+    size_t new_piece_length;
+    if (current_task.total_pieces_count > 0) {
+        new_piece_length = current_task.total_size / current_task.total_pieces_count;
+    } else {
+        new_piece_length = 0;
+    }
+    current_task.UpdateFromPieceStorage(storage, new_piece_length);
+    current_task.last_update = std::chrono::system_clock::now();
+}
+
+void TorrentClient::UpdateTaskFromTracker(const TorrentTracker& tracker) {
+    std::lock_guard<std::mutex> lock(task_mutex);
+    current_task.total_peers_count = tracker.GetPeers().size();
+    current_task.last_update = std::chrono::system_clock::now();
+}
+
+void TorrentClient::PauseDownload() {
+    is_paused = true;
+    UpdateTaskStatus(TorrentStatus::kPaused);
+    AddLogMessage("Download paused");
+}
+
+void TorrentClient::ResumeDownload() {
+    is_paused = false;
+    UpdateTaskStatus(TorrentStatus::kDownloading);
+    AddLogMessage("Download resumed");
+}
+
+bool TorrentClient::IsDownloading() const {
+    return current_task.status == TorrentStatus::kDownloading;
+}
+
+bool TorrentClient::IsPaused() const {
+    return is_paused.load();
 }

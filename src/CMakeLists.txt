@@ -6,19 +6,16 @@ include_directories(
 set(SOURCES
     main.cpp
 
-    # Utils
     utils/BencodeParser.cpp
     utils/byte_tools.cpp
 
-    # Core
     core/TorrentFile.cpp
     core/TorrentTracker.cpp
     core/Piece.cpp
     core/PieceStorage.cpp
     core/TorrentClient.cpp
     core/UdpTracker.cpp
-
-    # Net
+    core/TorrentTask.cpp
     net/TcpConnect.cpp
     net/PeerConnect.cpp
     net/Message.cpp
@@ -27,7 +24,6 @@ set(SOURCES
 
 add_executable(torrent-client ${SOURCES})
 
-# Link libraries
 target_link_libraries(torrent-client
     OpenSSL::SSL
     OpenSSL::Crypto
