@@ -1,12 +1,17 @@
 ### Torrent-Client
 
-A lightweight C++ BitTorrent client implementation supporting downloads of single-file torrents.
+A lightweight C++ BitTorrent client implementation supporting downloads of single-file torrents, using both TCP and UDP trackers. Now has Text User Interface.
+
+## Screenshots
+![Download In Progress](assets/images/downloading.png)
+![Paused While Downloading](assets/images/paused.png)
+![Download completed](assets/images/finished.png)
 
 ## Features
 - Single-file torrent downloads
 - Multi-threaded peer connections
 - Compact peer protocol support
-- Progress tracking
+- Text User Interface
 
 ## Dependencies
 Required
@@ -15,8 +20,9 @@ Required
 - OpenSSL (for SHA-1 hashing)
 - libcurl (for HTTP tracker communication)
 
-Optional
-- CPR (C++ Requests library) - will be automatically downloaded if not found
+Downloaded Automatically
+- FTXUI - for TUI
+- CPR - for network requests
 
 ## Dependencies Installation
 
@@ -49,13 +55,17 @@ make -j$(nproc)
 ## Usage
 
 ```bash
-./torrent-client -d <output_directory> <torrent_file>
+# in Torrent-Client/build
+# make sure you have output-directory created
+src/simple-torrent-tui <torrent-file> <output-directory>
 ```
 
 ### Example
 
 ```bash
-./torrent-client -d ./downloads ./resources/debian-9.3.0-ppc64el-netinst.torrent
+# in Torrent-Client/build
+# downloads is created before executing the command
+src/simple-torrent-tui ../resources/ubuntu-25.10-live-server-amd64.iso.torrent downloads
 ```
 
 ## Main Components
@@ -84,6 +94,5 @@ Parses Bencode formatted data
 
 ## Features To Implement:
 - Multi-file support
-- DHT support
 - Seeding
 
