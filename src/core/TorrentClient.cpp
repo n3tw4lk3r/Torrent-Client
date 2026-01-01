@@ -6,7 +6,6 @@
 #include <thread>
 #include <algorithm>
 
-using namespace std::chrono_literals;
 
 TorrentClient::TorrentClient(const std::string& peerId) :
     peer_id(peerId + GenerateRandomSuffix())
@@ -31,6 +30,11 @@ std::string TorrentClient::GenerateRandomSuffix(size_t length) {
 bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
                                            const TorrentFile& torrent_file,
                                            const TorrentTracker& tracker) {
+    using namespace std::chrono_literals;
+    UpdateTaskStatus(TorrentStatus::kDownloading);
+    UpdateTaskFromTracker(tracker);
+    AddLogMessage("Starting download with " + std::to_string(tracker.GetPeers().size()) + " peers");
+    
     std::vector<std::thread> peer_threads;
     std::vector<std::shared_ptr<PeerConnect>> peer_connections;
 
@@ -40,13 +44,13 @@ bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
                 std::make_shared<PeerConnect>(peer, torrent_file, peer_id, pieces)
             );
         } catch (const std::exception& e) {
-            std::cerr << "Failed to create connection to " << peer.ip << ":" << peer.port
-                      << " - " << e.what() << std::endl;
+            std::string error_msg = "Failed to connect to " + peer.ip + ":" + std::to_string(peer.port) + " - " + e.what();
+            AddLogMessage(error_msg);
         }
     }
 
     if (peer_connections.empty()) {
-        std::cerr << "No valid peer connections established" << std::endl;
+        AddLogMessage("No valid peer connections established");
         return true;
     }
 
@@ -57,71 +61,74 @@ bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
                 try {
                     peer_connect_ptr->Run();
                 } catch (const std::exception& e) {
-                    std::cerr << "Peer " << " error: "
-                              << e.what() << " - reconnecting..." << std::endl;
-
                     if (!peer_connect_ptr->IsTerminated()) {
                         std::this_thread::sleep_for(5s);
                     }
                 }
             }
-            std::cout << "Peer thread for " << " terminated" << std::endl;
         });
     }
 
-    std::cout << "Started " << peer_threads.size() << " threads for peers" << std::endl;
+    AddLogMessage("Started " + std::to_string(peer_threads.size()) + " peer threads");
 
     const size_t target_pieces = pieces.TotalPiecesCount();
-
-    std::cout << "=== DOWNLOAD STARTED ===" << std::endl;
-    std::cout << "Target pieces: " << target_pieces << std::endl;
-    std::cout << "Initial saved pieces: " << pieces.PiecesSavedToDiscCount() << std::endl;
+    
+    {
+        std::lock_guard<std::mutex> lock(task_mutex);
+        current_task.total_pieces_count = target_pieces;
+        current_task.total_size = torrent_file.length;
+    }
+    
+    AddLogMessage("Downloading " + std::to_string(target_pieces) + " pieces");
 
     bool endgame_mode = false;
     auto last_requeue_time = std::chrono::steady_clock::now();
     const auto requeue_interval = std::chrono::seconds(10);
+    auto last_status_update = std::chrono::steady_clock::now();
 
     while (!is_terminated && !pieces.IsDownloadComplete()) {
+        auto now = std::chrono::steady_clock::now();
+        if (now - last_status_update > 500ms) {
+            UpdateTaskFromPieceStorage(pieces);
+            last_status_update = now;
+        }
+        
+        if (is_paused) {
+            std::this_thread::sleep_for(100ms);
+            continue;
+        }
+
         size_t missing_count = pieces.GetMissingPieces().size();
 
         if (!endgame_mode && missing_count <= 10) {
             endgame_mode = true;
-            std::cout << "=== ENTERING ENDGAME MODE ===" << std::endl;
-            std::cout << "Missing pieces: " << missing_count << std::endl;
+            AddLogMessage("Entering endgame mode - " + std::to_string(missing_count) + " pieces remaining");
         }
 
         if (endgame_mode && pieces.QueueIsEmpty()) {
-            auto now = std::chrono::steady_clock::now();
             if (now - last_requeue_time > requeue_interval) {
-                std::cout << "ENDGAME: Forcing requeue of " << missing_count << " missing pieces" << std::endl;
+                AddLogMessage("Endgame: requeuing " + std::to_string(missing_count) + " missing pieces");
                 pieces.ForceRequeueMissingPieces();
                 last_requeue_time = now;
             }
         }
 
         if (!pieces.HasActiveWork()) {
-            auto missing = pieces.GetMissingPieces();
-            std::cout << "No active work. Missing: " << missing.size()
-                      << ", Queue: " << (pieces.QueueIsEmpty() ? "empty" : "has work")
-                      << (endgame_mode ? " [ENDGAME]" : "") << std::endl;
-
             std::this_thread::sleep_for(500ms);
         } else {
-            std::this_thread::sleep_for(1000ms);
-        }
-
-        size_t current_saved_count = pieces.PiecesSavedToDiscCount();
-        if (current_saved_count % 5 == 0 || current_saved_count == target_pieces || endgame_mode) {
-            std::cout << "Progress: " << current_saved_count << "/" << target_pieces
-                      << (endgame_mode ? " [ENDGAME]" : "") << std::endl;
+            std::this_thread::sleep_for(100ms);
         }
     }
 
-    std::cout << "=== DOWNLOAD FINISHED ===" << std::endl;
-    std::cout << "Final saved pieces: " << pieces.PiecesSavedToDiscCount() << "/" << target_pieces << std::endl;
-    std::cout << "Download complete: " << (pieces.IsDownloadComplete() ? "YES" : "NO") << std::endl;
-
-    std::cout << "Terminating peer connections..." << std::endl;
+    UpdateTaskFromPieceStorage(pieces);
+    
+    if (pieces.IsDownloadComplete()) {
+        UpdateTaskStatus(TorrentStatus::kCompleted);
+        AddLogMessage("Download completed successfully");
+    } else {
+        UpdateTaskStatus(TorrentStatus::kError);
+        AddLogMessage("Download incomplete - missing pieces");
+    }
 
     is_terminated = true;
 
@@ -132,27 +139,17 @@ bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
     for (auto& thread : peer_threads) {
         if (thread.joinable()) {
             thread.join();
-        } else {
-            thread.detach();
         }
     }
 
-    std::cout << "=== FINAL DIAGNOSTICS ===" << std::endl;
-    pieces.PrintMissingPieces();
-
-    bool download_complete = pieces.IsDownloadComplete();
-    if (download_complete) {
-        std::cout << "DOWNLOAD COMPLETE SUCCESSFULLY!" << std::endl;
-    } else {
-        std::cout << "DOWNLOAD INCOMPLETE! Missing pieces: "
-                  << (target_pieces - pieces.PiecesSavedToDiscCount())
-                  << std::endl;
-    }
-
-    return !download_complete;
+    return !pieces.IsDownloadComplete();
 }
 
 void TorrentClient::DownloadFromTracker(const TorrentFile& torrent_file, PieceStorage& pieces) {
+    using namespace std::chrono_literals;
+    UpdateTaskStatus(TorrentStatus::kConnected);
+    AddLogMessage("Connecting to trackers...");
+    
     std::vector<std::string> trackers = {
         torrent_file.announce,
         "udp://tracker.opentrackr.org:1337/announce",
@@ -164,12 +161,23 @@ void TorrentClient::DownloadFromTracker(const TorrentFile& torrent_file, PieceSt
     std::sort(trackers.begin(), trackers.end());
     trackers.erase(std::unique(trackers.begin(), trackers.end()), trackers.end());
 
-    std::cout << "Using " << trackers.size() << " unique trackers" << std::endl;
+    AddLogMessage("Using " + std::to_string(trackers.size()) + " trackers");
 
     int retry_count = 0;
     const int max_retries = 10;
+    auto last_tracker_update = std::chrono::steady_clock::now();
 
     while (!is_terminated && !pieces.IsDownloadComplete()) {
+        if (std::chrono::steady_clock::now() - last_tracker_update > 1s) {
+            UpdateTaskFromPieceStorage(pieces);
+            last_tracker_update = std::chrono::steady_clock::now();
+        }
+        
+        if (is_paused) {
+            std::this_thread::sleep_for(100ms);
+            continue;
+        }
+
         std::vector<Peer> all_peers;
 
         for (size_t i = 0; i < trackers.size() && !is_terminated; ++i) {
@@ -178,9 +186,9 @@ void TorrentClient::DownloadFromTracker(const TorrentFile& torrent_file, PieceSt
                 tracker.UpdatePeers(torrent_file, peer_id, 12345);
                 const auto& peers = tracker.GetPeers();
                 all_peers.insert(all_peers.end(), peers.begin(), peers.end());
-                std::cout << trackers[i] << " - " << peers.size() << " peers" << std::endl;
+                AddLogMessage(trackers[i] + " - " + std::to_string(peers.size()) + " peers");
             } catch (const std::exception& e) {
-                std::cout << trackers[i] << " - " << e.what() << std::endl;
+                AddLogMessage("Tracker " + trackers[i] + " error: " + e.what());
             }
         }
 
@@ -194,30 +202,21 @@ void TorrentClient::DownloadFromTracker(const TorrentFile& torrent_file, PieceSt
             all_peers.erase(last, all_peers.end());
         }
 
-        std::cout << "Total unique peers: " << all_peers.size() << std::endl;
-
-        size_t saved_count = pieces.PiecesSavedToDiscCount();
-        size_t total_count = pieces.TotalPiecesCount();
-        auto missing = pieces.GetMissingPieces();
-        std::cout << "Progress: " << saved_count << "/" << total_count
-                  << " (missing: " << missing.size() << " pieces)" << std::endl;
-
-        if (!missing.empty() && missing.size() <= 10) {
-            std::cout << "Missing pieces: ";
-            for (size_t piece : missing) {
-                std::cout << piece << " ";
-            }
-            std::cout << std::endl;
+        {
+            std::lock_guard<std::mutex> lock(task_mutex);
+            current_task.total_peers_count = all_peers.size();
         }
 
+        AddLogMessage("Total unique peers: " + std::to_string(all_peers.size()));
+
         if (all_peers.empty()) {
-            std::cout << "No peers, waiting 30s..." << std::endl;
+            AddLogMessage("No peers found, waiting 30 seconds...");
             std::this_thread::sleep_for(30s);
             continue;
         }
 
         if (pieces.QueueIsEmpty() && !pieces.IsDownloadComplete()) {
-            std::cout << "Queue is empty but download not complete. Forcing requeue of missing pieces..." << std::endl;
+            AddLogMessage("Queue empty, requeuing missing pieces");
             pieces.ForceRequeueMissingPieces();
             retry_count++;
         }
@@ -229,69 +228,76 @@ void TorrentClient::DownloadFromTracker(const TorrentFile& torrent_file, PieceSt
 
         if (!pieces.IsDownloadComplete()) {
             if (retry_count >= max_retries) {
-                std::cout << "Max retries reached. Giving up on remaining pieces." << std::endl;
+                AddLogMessage("Max retries reached, stopping download");
                 break;
             }
 
-            std::cout << "Still missing " << missing.size() << " pieces (retry "
-                      << retry_count << "/" << max_retries << ")" << std::endl;
-            std::cout << "Waiting 30s before next tracker cycle..." << std::endl;
+            AddLogMessage("Retry " + std::to_string(retry_count) + "/" + std::to_string(max_retries) + 
+                         " - " + std::to_string(pieces.GetMissingPieces().size()) + " pieces remaining");
             std::this_thread::sleep_for(30s);
         }
     }
 
+    UpdateTaskFromPieceStorage(pieces);
+    
     if (pieces.IsDownloadComplete()) {
-        std::cout << "DOWNLOAD COMPLETED SUCCESSFULLY!" << std::endl;
+        UpdateTaskStatus(TorrentStatus::kCompleted);
+        AddLogMessage("Download completed successfully!");
     } else {
-        auto missing = pieces.GetMissingPieces();
-        std::cout << "DOWNLOAD INCOMPLETE! Missing " << missing.size() << " pieces." << std::endl;
-        if (!missing.empty()) {
-            std::cout << "Final missing pieces: ";
-            for (size_t piece : missing) {
-                std::cout << piece << " ";
-            }
-            std::cout << std::endl;
-        }
+        UpdateTaskStatus(TorrentStatus::kError);
+        AddLogMessage("Download incomplete");
     }
 }
 
 void TorrentClient::DownloadTorrent(const std::filesystem::path& torrent_file_path,
                                    const std::filesystem::path& output_directory) {
     is_terminated = false;
+    is_paused = false;
+
+    UpdateTaskStatus(TorrentStatus::kLoading);
+    AddLogMessage("Loading torrent file: " + torrent_file_path.string());
 
     TorrentFile torrentFile = LoadTorrentFile(torrent_file_path);
 
-    std::cout << "Downloading " << torrentFile.piece_hashes.size() << " pieces" << std::endl;
-    std::cout << "File: " << torrentFile.name << " (" << torrentFile.length << " bytes)" << std::endl;
-    std::cout << "Peer ID: " << peer_id << std::endl;
+    {
+        std::lock_guard<std::mutex> lock(task_mutex);
+        current_task.filename = torrentFile.name;
+        current_task.total_size = torrentFile.length;
+        current_task.info_hash = torrentFile.info_hash;
+        current_task.announce_url = torrentFile.announce;
+        current_task.output_file_path = output_directory.string();
+        current_task.total_pieces_count = torrentFile.piece_hashes.size();
+        current_task.start_time = std::chrono::system_clock::now();
+        current_task.last_update = std::chrono::system_clock::now();
+    }
+    
+    AddLogMessage("File: " + torrentFile.name + " (" + 
+                  std::to_string(torrentFile.length) + " bytes, " +
+                  std::to_string(torrentFile.piece_hashes.size()) + " pieces)");
 
     PieceStorage pieces(torrentFile, output_directory);
 
     auto start_time = std::chrono::steady_clock::now();
-    DownloadFromTracker(torrentFile, pieces);
+    
+    try {
+        DownloadFromTracker(torrentFile, pieces);
+    } catch (const std::exception& e) {
+        UpdateTaskStatus(TorrentStatus::kError);
+        AddLogMessage("Download error: " + std::string(e.what()));
+    }
+    
     auto end_time = std::chrono::steady_clock::now();
 
     pieces.CloseOutputFile();
 
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
-
-    size_t saved_count = pieces.PiecesSavedToDiscCount();
-    size_t total_count = torrentFile.piece_hashes.size();
-    bool is_complete = pieces.IsDownloadComplete();
-
-    std::cout << "=== TORRENT DOWNLOAD FINISHED ===" << std::endl;
-    std::cout << "Download time: " << duration.count() << " seconds" << std::endl;
-    std::cout << "Saved " << saved_count << "/" << total_count << " pieces to disk" << std::endl;
-    std::cout << "All pieces complete and valid: " << (is_complete ? "YES" : "NO") << std::endl;
-    std::cout << "Completion: " << (saved_count * 100 / total_count) << "%" << std::endl;
-
-    if (is_complete) {
-        std::cout << "Download completed successfully!" << std::endl;
+    
+    AddLogMessage("Download finished in " + std::to_string(duration.count()) + " seconds");
+    
+    if (pieces.IsDownloadComplete()) {
+        AddLogMessage("Download completed successfully!");
     } else {
-        std::cout << "Download interrupted! Missing or invalid: "
-                  << (total_count - saved_count) << " pieces." << std::endl;
-        pieces.PrintMissingPieces();
-        pieces.PrintDownloadStatus();
+        AddLogMessage("Download incomplete!");
     }
 }
 
@@ -300,7 +306,7 @@ void TorrentClient::AddLogMessage(const std::string& message) {
     
     auto now = std::chrono::system_clock::now();
     auto time = std::chrono::system_clock::to_time_t(now);
-    char time_string[20]; // have to use char[]
+    char time_string[20];
     std::strftime(time_string, sizeof(time_string), "[%H:%M:%S]", std::localtime(&time));
     
     log_messages.push_back(std::string(time_string) + " " + message);

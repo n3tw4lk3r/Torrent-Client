@@ -7,7 +7,6 @@
 #include <sstream>
 
 TorrentFile LoadTorrentFile(const std::string& filename) {
-    std::cout << "Loading torrent file...\n";
     TorrentFile result;
 
     utils::BencodeParser myParser;

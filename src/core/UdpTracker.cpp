@@ -24,7 +24,6 @@ UdpTracker::TrackerResponse UdpTracker::Announce(
 }
 
 uint64_t UdpTracker::Connect() {
-    std::cout << "[Tracker] Performing CONNECT to " << host << ":" << port << "\n";
 
     uint64_t protocol_id = 0x41727101980;
     uint32_t action = 0; // connect = 0
@@ -56,7 +55,6 @@ uint64_t UdpTracker::Connect() {
 
     uint64_t connection_id = utils::BytesToInt64(response.substr(8, 8));
 
-    std::cout << "[Tracker] CONNECT success, connection_id=" << connection_id << "\n";
     return connection_id;
 }
 
@@ -71,7 +69,6 @@ UdpTracker::TrackerResponse UdpTracker::AnnounceWithConnection(
     int num_want,
     uint16_t port)
 {
-    std::cout << "[Tracker] Sending ANNOUNCE\n";
 
     if (info_hash.size() != 20) {
         throw std::runtime_error("info_hash must be 20 bytes");
@@ -139,6 +136,5 @@ UdpTracker::TrackerResponse UdpTracker::AnnounceWithConnection(
         offset += 6;
     }
 
-    std::cout << "[Tracker] ANNOUNCE OK, peers=" << tracker_response.peers.size() << "\n";
     return tracker_response;
 }

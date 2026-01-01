@@ -10,10 +10,6 @@ PieceStorage::PieceStorage(const TorrentFile& torrent_file, const std::filesyste
 
     total_piece_count = torrent_file.piece_hashes.size();
 
-    std::cout << "=== PIECE STORAGE INIT ===" << std::endl;
-    std::cout << "Total pieces: " << total_piece_count << std::endl;
-    std::cout << "Piece length: " << torrent_file.piece_length << std::endl;
-    std::cout << "Total length: " << torrent_file.length << std::endl;
 
     for (size_t i = 0; i < total_piece_count; ++i) {
         size_t pieceLength = (i == total_piece_count - 1)
@@ -25,7 +21,6 @@ PieceStorage::PieceStorage(const TorrentFile& torrent_file, const std::filesyste
     }
 
     InitializeOutputFile();
-    std::cout << "Initialized " << total_piece_count << " pieces in queue" << std::endl;
 }
 
 void PieceStorage::InitializeOutputFile() {
@@ -46,7 +41,6 @@ void PieceStorage::InitializeOutputFile() {
     }
     file.flush();
 
-    std::cout << "Created output file: " << filename << " (" << torrent_file.length << " bytes)" << std::endl;
 }
 
 size_t PieceStorage::GetMissingPiecesCount() const {
@@ -92,7 +86,6 @@ void PieceStorage::PieceProcessed(const PiecePtr& piece) {
     if (!piece) return;
 
     if (!piece->HashMatches()) {
-        std::cout << "Piece " << piece->GetIndex() << " hash mismatch, requeuing..." << std::endl;
         Enqueue(piece);
         return;
     }
@@ -106,39 +99,14 @@ bool PieceStorage::QueueIsEmpty() const {
 }
 
 void PieceStorage::PrintDownloadStatus() const {
-    std::cout << "=== DOWNLOAD STATUS ===" << std::endl;
-    std::cout << "Total pieces: " << total_piece_count << std::endl;
-    std::cout << "Saved to disk: " << PiecesSavedToDiscCount() << std::endl;
-    std::cout << "In queue: " << remaining_pieces_queue.size() << std::endl;
-    std::cout << "Download complete: " << (IsDownloadComplete() ? "YES" : "NO") << std::endl;
+
 }
 
 void PieceStorage::PrintDetailedStatus() const {
-    std::cout << "=== DETAILED STATUS ===" << std::endl;
-    std::cout << "Total pieces: " << total_piece_count << std::endl;
-    std::cout << "Saved: " << PiecesSavedToDiscCount() << std::endl;
-    std::cout << "In queue: " << remaining_pieces_queue.size() << std::endl;
 }
 
 void PieceStorage::PrintMissingPieces() const {
-    auto missing = GetMissingPieces();
 
-    std::cout << "=== MISSING PIECES ===" << std::endl;
-    std::cout << "Total pieces: " << total_piece_count << std::endl;
-    std::cout << "Saved to disk: " << indices_of_pieces_saved_to_disk.size() << std::endl;
-    std::cout << "In queue: " << remaining_pieces_queue.size() << std::endl;
-    std::cout << "Missing pieces count: " << missing.size() << std::endl;
-
-    if (!missing.empty()) {
-        std::cout << "Missing pieces: ";
-        for (size_t i = 0; i < std::min(missing.size(), size_t(20)); ++i) {
-            std::cout << missing[i] << " ";
-        }
-        if (missing.size() > 20) {
-            std::cout << "... (and " << (missing.size() - 20) << " more)";
-        }
-        std::cout << std::endl;
-    }
 }
 
 bool PieceStorage::IsDownloadComplete() const {
@@ -163,7 +131,6 @@ void PieceStorage::ForceRequeueMissingPieces() {
         remaining_pieces_queue.push(piece);
     }
 
-    std::cout << "Requeued " << missing.size() << " missing pieces" << std::endl;
 }
 
 std::vector<size_t> PieceStorage::GetMissingPieces() const {
@@ -207,9 +174,6 @@ void PieceStorage::SavePieceToDisk(const PiecePtr& piece) {
         std::string piece_data = piece->GetData();
 
         if (piece_data.size() != piece->GetLength()) {
-            std::cerr << "ERROR: Piece " << piece->GetIndex()
-                      << " data size mismatch: " << piece_data.size()
-                      << " != " << piece->GetLength() << std::endl;
             return;
         }
 
@@ -218,12 +182,8 @@ void PieceStorage::SavePieceToDisk(const PiecePtr& piece) {
         file.flush();
 
         indices_of_pieces_saved_to_disk.push_back(piece->GetIndex());
-        std::cout << "Saved piece " << piece->GetIndex() << " to disk ("
-                  << piece_data.size() << " bytes)" << std::endl;
 
     } catch (const std::exception& e) {
-        std::cerr << "Failed to save piece " << piece->GetIndex() << " to disk: "
-                  << e.what() << std::endl;
         throw;
     }
 }
@@ -237,6 +197,5 @@ void PieceStorage::CloseOutputFile() {
     if (file.is_open()) {
         file.flush();
         file.close();
-        std::cout << "Output file closed" << std::endl;
     }
 }

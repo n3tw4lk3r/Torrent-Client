@@ -96,7 +96,6 @@ void utils::BencodeParser::ProcessList() {
 utils::BencodeParser::BencodeParser() : index(0) {}
 
 std::vector<std::string> utils::BencodeParser::ParseFromFile(const std::string& filename) {
-    std::cout << "bencode: " << filename << std::endl;
     char buffer;
     std::fstream inputfstream(filename, std::fstream::in);
 
@@ -127,7 +126,6 @@ std::vector<std::string> utils::BencodeParser::GetPieceHashes() {
                 pieces_hashes.push_back(pieces_data.substr(j, 20));
             }
 
-            std::cout << "Extracted " << pieces_hashes.size() << " piece hashes" << std::endl;
             break;
         }
     }

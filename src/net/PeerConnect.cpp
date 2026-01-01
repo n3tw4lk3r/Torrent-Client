@@ -60,17 +60,12 @@ void PeerConnect::Run() {
         } catch (const std::exception& e) {
             if (!is_terminated) {
                 total_failures++;
-                std::cerr << "Peer " << socket.GetIp() << ":" << socket.GetPort()
-                            << " error: " << e.what()
-                            << " (total failures: " << total_failures << ")" << std::endl;
                 HandleConnectionError();
             }
         }
     }
 
     if (total_failures >= max_total_failures) {
-        std::cout << "Permanently giving up on peer " << socket.GetIp()
-                    << " after " << total_failures << " failures" << std::endl;
         has_failed = true;
     }
 
@@ -86,13 +81,8 @@ void PeerConnect::HandleConnectionError() {
 
     if (piece_is_in_progress && !piece_is_in_progress->AllBlocksRetrieved()) {
             if (!piece_storage.IsPieceAlreadySaved(piece_is_in_progress->GetIndex())) {
-                std::cout << "DEBUG: Returning piece " << piece_is_in_progress->GetIndex()
-                          << " to queue due to connection error" << std::endl;
                 piece_is_in_progress->Reset();
                 piece_storage.Enqueue(piece_is_in_progress);
-            } else {
-                std::cout << "DEBUG: Piece " << piece_is_in_progress->GetIndex()
-                          << " already saved, not returning to queue" << std::endl;
             }
             piece_is_in_progress.reset();
         }
@@ -144,8 +134,6 @@ bool PeerConnect::EstablishConnection() {
         SendInterested();
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "Failed to establish connection with " << socket.GetIp()
-                  << ":" << socket.GetPort() << " - " << e.what() << std::endl;
         try {
             socket.CloseConnection();
         } catch (...) {
@@ -188,8 +176,6 @@ void PeerConnect::SendInterested() {
 void PeerConnect::Terminate() {
     is_terminated = true;
     if (piece_is_in_progress && !piece_is_in_progress->AllBlocksRetrieved()) {
-        std::cout << "DEBUG: Returning piece " << piece_is_in_progress->GetIndex()
-                  << " to queue due to termination" << std::endl;
         piece_is_in_progress->Reset();
         piece_storage.Enqueue(piece_is_in_progress);
         piece_is_in_progress.reset();
@@ -217,8 +203,6 @@ void PeerConnect::MainLoop() {
             }
 
             if (block_is_pending && (now - last_block_request_time > block_timeout)) {
-                std::cout << "DEBUG: Block timeout for piece "
-                            << piece_is_in_progress->GetIndex() << ", returning to queue" << std::endl;
                 piece_is_in_progress->Reset();
                 piece_storage.Enqueue(piece_is_in_progress);
                 piece_is_in_progress.reset();
@@ -286,8 +270,6 @@ PiecePtr PeerConnect::GetNextAvailablePiece() {
 
         if (pieces_availability.IsPieceAvailable(piece->GetIndex()) || endgame_mode) {
             if (endgame_mode && !pieces_availability.IsPieceAvailable(piece->GetIndex())) {
-                std::cout << "ENDGAME: Trying piece " << piece->GetIndex()
-                          << " even though peer doesn't have it in bitfield" << std::endl;
             }
             return piece;
         }
@@ -302,12 +284,9 @@ void PeerConnect::ProcessMessage(const std::string& message_data) {
 
     switch (message.id) {
         case MessageId::kChoke:
-            std::cout << "DEBUG: Peer " << socket.GetIp() << " choked us" << std::endl;
             is_choked = true;
             block_is_pending = false;
             if (piece_is_in_progress && !piece_is_in_progress->AllBlocksRetrieved()) {
-                std::cout << "DEBUG: Returning piece " << piece_is_in_progress->GetIndex()
-                          << " to queue due to choke" << std::endl;
                 piece_is_in_progress->Reset();
                 piece_storage.Enqueue(piece_is_in_progress);
                 piece_is_in_progress.reset();
@@ -315,7 +294,6 @@ void PeerConnect::ProcessMessage(const std::string& message_data) {
             break;
 
         case MessageId::kUnchoke:
-            std::cout << "DEBUG: Peer " << socket.GetIp() << " unchoked us" << std::endl;
             is_choked = false;
             break;
 
@@ -323,7 +301,6 @@ void PeerConnect::ProcessMessage(const std::string& message_data) {
             if (message.payload.size() >= 4) {
                 size_t pieceIndex = utils::BytesToInt(message.payload.substr(0, 4));
                 pieces_availability.SetPieceAvailability(pieceIndex);
-                std::cout << "DEBUG: Peer " << socket.GetIp() << " now has piece " << pieceIndex << std::endl;
             }
             break;
         }
@@ -345,8 +322,6 @@ void PeerConnect::ProcessMessage(const std::string& message_data) {
                             piece_is_in_progress.reset();
 
                         } else {
-                            std::cout << "DEBUG: Piece " << piece_index << " hash mismatch from "
-                                      << socket.GetIp() << std::endl;
 
                             piece_is_in_progress->Reset();
                             piece_storage.Enqueue(piece_is_in_progress);

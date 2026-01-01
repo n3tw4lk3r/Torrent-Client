@@ -9,7 +9,6 @@
 UdpClient::UdpClient(const std::string& host, int port, int timeout_sec)
     : host(host), port(port), timeout_sec(timeout_sec)
 {
-    std::cout << "[UdpClient] Creating UDP client for " << host << ":" << port << "\n";
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
@@ -40,7 +39,6 @@ UdpClient::UdpClient(const std::string& host, int port, int timeout_sec)
     server_address.sin_port = htons(port);
     memcpy(&server_address.sin_addr.s_addr, server->h_addr, server->h_length);
 
-    std::cout << "[UdpClient] UDP client ready\n";
 }
 
 UdpClient::~UdpClient() {
@@ -50,8 +48,6 @@ UdpClient::~UdpClient() {
 }
 
 std::string UdpClient::SendReceive(const std::string& data) {
-    std::cout << "[UdpClient] Sending " << data.size() << " bytes to "
-              << host << ":" << port << "\n";
 
     ssize_t sent = sendto(sockfd, data.data(), data.size(), 0,
                           reinterpret_cast<sockaddr*>(&server_address),
@@ -88,7 +84,6 @@ std::string UdpClient::SendReceive(const std::string& data) {
             std::to_string(port) + ": " + strerror(errno));
     }
 
-    std::cout << "[UdpClient] Received " << received << " bytes\n";
 
     return std::string(buffer.data(), received);
 }

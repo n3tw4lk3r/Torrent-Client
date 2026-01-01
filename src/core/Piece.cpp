@@ -23,12 +23,6 @@ bool Piece::HashMatches() const {
     std::string calculated_hash = utils::CalculateSHA1(piece_data);
     bool matches = (calculated_hash == hash);
 
-    if (!matches) {
-        std::cout << "Hash mismatch for piece " << index
-                  << " (expected: " << utils::BytesToHex(hash)
-                  << ", got: " << utils::BytesToHex(calculated_hash) << ")" << std::endl;
-    }
-
     return matches;
 }
 
@@ -75,11 +69,6 @@ std::string Piece::GetData() const {
 
     for (const auto& block : blocks) {
         if (block.status == Block::kRetrieved) {
-            if (block.data.size() != block.length) {
-                std::cerr << "WARNING: Block at offset " << block.offset
-                          << " has incorrect size: " << block.data.size()
-                          << " != " << block.length << std::endl;
-            }
             result += block.data;
         } else {
             result.append(block.length, '\0');

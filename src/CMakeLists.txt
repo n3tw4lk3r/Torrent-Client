@@ -1,49 +1,58 @@
-include_directories(
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-set(SOURCES
-    main.cpp
-
-    utils/BencodeParser.cpp
-    utils/byte_tools.cpp
-
-    core/TorrentFile.cpp
-    core/TorrentTracker.cpp
+add_library(core STATIC
     core/Piece.cpp
     core/PieceStorage.cpp
     core/TorrentClient.cpp
+    core/TorrentFile.cpp
+    core/TorrentTracker.cpp
     core/UdpTracker.cpp
     core/TorrentTask.cpp
-    net/TcpConnect.cpp
-    net/PeerConnect.cpp
+    utils/BencodeParser.cpp
+    utils/byte_tools.cpp
     net/Message.cpp
+    net/PeerConnect.cpp
+    net/TcpConnect.cpp
     net/UdpClient.cpp
 )
 
-add_executable(torrent-client ${SOURCES})
+target_include_directories(core PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
 
-target_link_libraries(torrent-client
+target_include_directories(core PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+)
+
+target_link_libraries(core PUBLIC
     OpenSSL::SSL
     OpenSSL::Crypto
     CURL::libcurl
-    pthread
+    cpr::cpr
 )
 
-if(TARGET cpr)
-    target_link_libraries(torrent-client cpr)
-elseif(cpr_FOUND)
-    target_link_libraries(torrent-client cpr::cpr)
-endif()
+add_executable(simple-torrent-console
+    main.cpp
+)
 
-target_include_directories(torrent-client
-    PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+target_link_libraries(simple-torrent-console
+    core
+)
+
+add_executable(simple-torrent-tui
+    main_tui.cpp
+    ui/TorrentUI.cpp
+)
+
+target_include_directories(simple-torrent-tui PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
 
-set_target_properties(torrent-client PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
+target_link_libraries(simple-torrent-tui
+    core
+    ftxui::component
+)
+
+install(TARGETS simple-torrent-console simple-torrent-tui
+    DESTINATION bin
 )

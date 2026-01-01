@@ -21,7 +21,6 @@ TorrentTracker::TorrentTracker(const std::string& url) : tracker_url(url) {}
 void TorrentTracker::UpdatePeers(const TorrentFile& torrent_file,
                                 const std::string& peer_id,
                                 int port) {
-    std::cout << "Tracker URL: " << tracker_url << std::endl;
 
     std::vector<std::string> all_trackers = { tracker_url };
 
@@ -36,8 +35,6 @@ void TorrentTracker::UpdatePeers(const TorrentFile& torrent_file,
     for (size_t i = 0; i < all_trackers.size() && peers.empty(); ++i) {
         const auto& current_tracker = all_trackers[i];
 
-        std::cout << "\n=== Trying tracker " << (i + 1) << "/" << all_trackers.size()
-                  << ": " << current_tracker << " ===" << std::endl;
 
         try {
             if (IsUdpTracker(current_tracker)) {
@@ -47,16 +44,10 @@ void TorrentTracker::UpdatePeers(const TorrentFile& torrent_file,
             }
 
             if (!peers.empty()) {
-                std::cout << "SUCCESS: Got " << peers.size() << " peers from " << current_tracker << std::endl;
                 break;
             }
 
         } catch (const std::exception& e) {
-            std::cerr << "Tracker " << current_tracker << " failed: " << e.what() << std::endl;
-
-            if (i < all_trackers.size() - 1) {
-                std::cout << "Trying next tracker..." << std::endl;
-            }
         }
     }
 
@@ -74,7 +65,6 @@ bool TorrentTracker::IsUdpTracker(const std::string& url) const {
 }
 
 std::pair<std::string, int> TorrentTracker::ParseUdpUrl(const std::string& url) {
-    std::cout << "Parsing UDP URL: " << url << std::endl;
 
     if (url.substr(0, 6) != "udp://") {
         throw std::runtime_error("Invalid UDP URL: " + url);
@@ -91,10 +81,8 @@ std::pair<std::string, int> TorrentTracker::ParseUdpUrl(const std::string& url) 
     if (colon_pos != std::string::npos) {
         std::string host = host_port.substr(0, colon_pos);
         int port = std::stoi(host_port.substr(colon_pos + 1));
-        std::cout << "Parsed: host=" << host << ", port=" << port << std::endl;
         return {host, port};
     } else {
-        std::cout << "No port specified, using default: 80" << std::endl;
         return {host_port, 80};
     }
 }
@@ -116,7 +104,6 @@ void TorrentTracker::UpdatePeersHttp(const TorrentFile& torrent_file,
                                     const std::string& peer_id,
                                     int port,
                                     const std::string& url) {
-    std::cout << "Using HTTP tracker: " << url << std::endl;
 
     cpr::Response tracker_response = cpr::Get(
         cpr::Url{url},
@@ -146,16 +133,13 @@ void TorrentTracker::UpdatePeersUdp(const TorrentFile& torrent_file,
                                    const std::string& peer_id,
                                    int port,
                                    const std::string& url) {
-    std::cout << "Using UDP tracker: " << url << std::endl;
 
     try {
         auto [host, tracker_port] = ParseUdpUrl(url);
 
-        std::cout << "Creating UDP tracker for " << host << ":" << tracker_port << std::endl;
 
         UdpTracker udp_tracker(host, tracker_port, 8);
 
-        std::cout << "Sending announce request..." << std::endl;
 
         auto response = udp_tracker.Announce(
             torrent_file.info_hash,  // info_hash (20 bytes)
@@ -173,12 +157,8 @@ void TorrentTracker::UpdatePeersUdp(const TorrentFile& torrent_file,
             peers.push_back(ConvertTrackerPeer(tracker_peer));
         }
 
-        std::cout << "SUCCESS: Received " << peers.size() << " peers from UDP tracker" << std::endl;
-        std::cout << "Interval: " << response.interval << " seconds" << std::endl;
-        std::cout << "Leechers: " << response.leechers << ", Seeders: " << response.seeders << std::endl;
 
     } catch (const std::exception& e) {
-        std::cerr << "UDP tracker " << url << " failed: " << e.what() << std::endl;
         throw;
     }
 }
@@ -202,7 +182,6 @@ void TorrentTracker::ParseTrackerResponse(const std::string& response, const std
             failure_reason = parsed[i + 1];
         }
         if (parsed[i] == "interval" && i + 1 < parsed.size()) {
-            std::cout << "Tracker interval: " << parsed[i + 1] << " seconds" << std::endl;
         }
     }
 
@@ -226,7 +205,6 @@ void TorrentTracker::ParseCompactPeers(const std::string& peers_data) {
         ParseDictionaryPeers(peers_data);
     }
 
-    std::cout << "Parsed " << peers.size() << " peers from tracker" << std::endl;
 }
 
 void TorrentTracker::ParseCompactBinaryPeers(const std::string& peers_data) {
@@ -265,15 +243,5 @@ bool TorrentTracker::IsWorking() const {
 }
 
 void TorrentTracker::PrintStats() const {
-    std::cout << "=== TRACKER STATS ===" << std::endl;
-    std::cout << "URL: " << tracker_url << std::endl;
-    std::cout << "Type: " << (IsUdpTracker() ? "UDP" : "HTTP") << std::endl;
-    std::cout << "Peers available: " << peers.size() << std::endl;
 
-    if (!peers.empty()) {
-        std::cout << "First 5 peers:" << std::endl;
-        for (size_t i = 0; i < std::min(peers.size(), size_t(5)); ++i) {
-            std::cout << "  " << peers[i].ip << ":" << peers[i].port << std::endl;
-        }
-    }
 }

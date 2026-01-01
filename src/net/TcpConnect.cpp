@@ -108,9 +108,6 @@ void TcpConnect::SendData(const std::string& data) const {
     }
 
     if ((send(sock, to_send, data.size(), 0)) < 0) {
-        if (!force_close_.load()) {
-            std::cout << "Send error: " << strerror(errno) << ' ' << errno << '\n';
-        }
         throw std::runtime_error("Send error");
     }
 }
