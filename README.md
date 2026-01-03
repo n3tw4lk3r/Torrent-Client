@@ -1,6 +1,7 @@
 ### Torrent-Client
 
 A lightweight C++ BitTorrent client implementation supporting downloads of single-file torrents, using both TCP and UDP trackers. Now has Text User Interface.
+This is an old university project of mine which I aim to refactor and enhance.
 
 ## Screenshots
 ![Download In Progress](assets/images/downloading.png)
@@ -93,6 +94,12 @@ Parses Bencode formatted data
 - No magnet link support
 
 ## Features To Implement:
+
+### Should do at somewhat near future
+- Fix bug with displaying 0 active peers in TUI when successfuly downloading
+- Improve code quality
+
+### Will implement some day
 - Multi-file support
 - Seeding
 
