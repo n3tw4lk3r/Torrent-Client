@@ -4,6 +4,7 @@
 #include "core/TorrentTracker.hpp"
 #include "core/PieceStorage.hpp"
 #include "core/TorrentTask.hpp"
+#include "net/PeerConnect.hpp"
 #include <filesystem>
 #include <atomic>
 #include <mutex>
@@ -35,6 +36,7 @@ private:
     TorrentTask current_task;
     mutable std::mutex log_mutex;
     std::vector<std::string> log_messages;
+    std::vector<std::shared_ptr<PeerConnect>> peer_connections;
 
     void AddLogMessage(const std::string& message);
     void UpdateTaskStatus(TorrentStatus status);

@@ -97,7 +97,6 @@ Parses Bencode formatted data
 ## Features To Implement:
 
 ### Should do at somewhat near future
-- Fix bug with displaying 0 active peers in TUI when successfuly downloading
 - Improve code quality
 
 ### Will implement some day

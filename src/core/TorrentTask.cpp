@@ -18,6 +18,10 @@ std::string TorrentTask::FormatBytes(uint64_t bytes) const {
     return oss.str();
 }
 
+void TorrentTask::SetConnectedPeers(int new_count) {
+    connected_peers = new_count;
+}
+
 std::string TorrentTask::GetFormattedSize() const {
     return FormatBytes(total_size);
 }

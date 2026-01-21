@@ -76,6 +76,10 @@ bool PeerConnect::IsTerminated() const {
     return is_terminated;
 }
 
+std::string PeerConnect::GetPeerId() const {
+    return peer_id;
+}
+
 void PeerConnect::HandleConnectionError() {
     has_failed = true;
 

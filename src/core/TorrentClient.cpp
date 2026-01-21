@@ -36,7 +36,6 @@ bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
     AddLogMessage("Starting download with " + std::to_string(tracker.GetPeers().size()) + " peers");
     
     std::vector<std::thread> peer_threads;
-    std::vector<std::shared_ptr<PeerConnect>> peer_connections;
 
     for (const Peer& peer : tracker.GetPeers()) {
         try {
@@ -85,6 +84,7 @@ bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
     auto last_requeue_time = std::chrono::steady_clock::now();
     const auto requeue_interval = std::chrono::seconds(10);
     auto last_status_update = std::chrono::steady_clock::now();
+    
 
     while (!is_terminated && !pieces.IsDownloadComplete()) {
         auto now = std::chrono::steady_clock::now();
@@ -349,6 +349,14 @@ void TorrentClient::UpdateTaskFromPieceStorage(const PieceStorage& storage) {
         new_piece_length = 0;
     }
     current_task.UpdateFromPieceStorage(storage, new_piece_length);
+
+    std::unordered_set<std::string> unique_active_peers;
+    for (const auto& peer_connect_ptr : peer_connections) {
+        if (!peer_connect_ptr->IsTerminated()) {
+            unique_active_peers.insert(peer_connect_ptr->GetPeerId());
+        }
+    }
+    current_task.SetConnectedPeers(unique_active_peers.size());
     current_task.last_update = std::chrono::system_clock::now();
 }
 

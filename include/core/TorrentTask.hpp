@@ -3,6 +3,7 @@
 #include <string>
 #include <cstdint>
 #include <chrono>
+#include <unordered_set>
 #include <vector>
 
 enum class TorrentStatus {
@@ -54,6 +55,7 @@ struct TorrentTask {
         downloaded_pieces_count(0)
     {}
     
+    void SetConnectedPeers(int new_count);
     std::string GetFormattedSize() const;
     std::string GetFormattedDownloaded() const;
     std::string GetFormattedSpeed() const;

@@ -33,6 +33,6 @@ private:
     const int port;
     std::chrono::milliseconds connect_timeout;
     std::chrono::milliseconds read_timeout;
-    mutable std::atomic<bool> force_close_{false};
+    mutable std::atomic<bool> force_close_{ false };
     mutable int sock;
 };

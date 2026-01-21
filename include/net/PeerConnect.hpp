@@ -31,6 +31,8 @@ public:
     bool Failed() const;
     bool IsDownloading() const;
     bool IsTerminated() const;
+    std::string GetPeerId() const;
+
 private:
     const TorrentFile& torrent_file;
     TcpConnect socket;
