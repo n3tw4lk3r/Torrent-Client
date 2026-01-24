@@ -6,9 +6,7 @@
 using namespace std::chrono_literals;
 
 TorrentUI::TorrentUI(std::unique_ptr<TorrentClient> client)
-    : client_(std::move(client))
-{
-    pause_button_ = ftxui::Button("", [this] { TogglePause(); });
+    : client_(std::move(client)) {
     main_component_ = BuildUI();
 }
 
@@ -16,14 +14,6 @@ TorrentUI::~TorrentUI() {
     running_ = false;
     if (update_thread_.joinable()) {
         update_thread_.join();
-    }
-}
-
-void TorrentUI::TogglePause() {
-    if (client_->IsPaused()) {
-        client_->ResumeDownload();
-    } else {
-        client_->PauseDownload();
     }
 }
 
@@ -40,12 +30,6 @@ ftxui::Component TorrentUI::BuildUI() {
             return false;
         }
         
-        if (event == Event::Character('p') || event == Event::Character('P') ||
-            event == Event::Character(' ')) {
-            TogglePause();
-            return true;
-        }
-        
         return false;
     });
     
@@ -56,168 +40,155 @@ ftxui::Element TorrentUI::Render() {
     using namespace ftxui;
     
     auto task = client_->GetCurrentTask();
-    auto logs = client_->GetLogMessages(15);
+    auto logs = client_->GetLogMessages(30);
     
-    Elements header_elements = {
-        text("Torrent Client") | bold | center,
-    };
-    
-    auto header = vbox(header_elements);
-    
-    Elements task_info;
+    auto header = hbox({
+        text(" TORRENT CLIENT ") | bold | inverted | center
+    }) | center | border;
     
     Color status_color = Color::GrayLight;
+    std::string status_symbol = "  ";
+    
     switch (task.status) {
         case TorrentStatus::kDownloading:
             status_color = Color::GreenLight;
-            break;
-        case TorrentStatus::kPaused:
-            status_color = Color::YellowLight;
+            status_symbol = ">>";
             break;
         case TorrentStatus::kCompleted:
-            status_color = Color::BlueLight;
+            status_color = Color::CyanLight;
+            status_symbol = "OK";
             break;
         case TorrentStatus::kError:
             status_color = Color::RedLight;
+            status_symbol = "!!";
             break;
         default:
             status_color = Color::GrayLight;
+            status_symbol = "--";
     }
     
+    Elements task_info;
+    
     std::string display_filename = task.filename;
-    if (display_filename.length() > 50) {
-        display_filename = display_filename.substr(0, 47) + "...";
+    if (display_filename.length() > 60) {
+        display_filename = display_filename.substr(0, 57) + "...";
     }
     
     task_info.push_back(hbox({
-        text("File: ") | bold,
+        text("File:    ") | bold,
         text(display_filename)
     }));
     
     task_info.push_back(hbox({
-        text("Status: ") | bold,
-        text(task.GetStatusString()) | color(status_color)
+        text("Status:  ") | bold,
+        text("[" + status_symbol + "] " + task.GetStatusString()) | bold | color(status_color)
     }));
     
     if (task.total_size > 0) {
         task_info.push_back(hbox({
-            text("Size: ") | bold,
+            text("Size:    ") | bold,
             text(task.GetFormattedSize())
         }));
     }
     
     task_info.push_back(hbox({
-        text("Peers: ") | bold,
+        text("Peers:   ") | bold,
         text(task.GetPeersString())
     }));
     
-    if (task.total_pieces_count > 0) {
-        std::string progress_bar;
+    if (task.total_pieces_count > 0 && task.status == TorrentStatus::kDownloading) {
+        task_info.push_back(text(""));
+        
         int bar_width = 50;
         int filled = static_cast<int>((task.progress / 100.0) * bar_width);
-        progress_bar = "[" + std::string(filled, '#') + 
-                      std::string(bar_width - filled, ' ') + "] " +
-                      task.GetFormattedProgress();
+        int percentage = static_cast<int>(task.progress);
         
-        task_info.push_back(text(" "));
-        task_info.push_back(text(progress_bar) | color(Color::GreenLight) | center);
-        task_info.push_back(text(" "));
+        std::string progress_bar;
+        for (int i = 0; i < bar_width; i++) {
+            if (i < filled) {
+                progress_bar += "#";
+            } else {
+                progress_bar += ".";
+            }
+        }
         
-        task_info.push_back(hbox({
-            text("Progress: ") | bold,
-            text(task.GetFormattedProgress()),
-            text(" (" + std::to_string(task.downloaded_pieces_count) + 
-                 "/" + std::to_string(task.total_pieces_count) + " pieces)")
-        }) | center);
-    }
-    
-    if (task.download_speed > 0) {
-        task_info.push_back(hbox({
-            text("Speed: ") | bold,
-            text(task.GetFormattedSpeed())
-        }) | center);
-    }
-    
-    auto task_panel = window(text("Download Info"), 
-        vbox(task_info) | frame
-    );
-    
-    std::string button_text;
-    Color button_color = Color::Default;
-    
-    if (task.status == TorrentStatus::kDownloading) {
-        button_text = "⏸ Pause";
-        button_color = Color::YellowLight;
-    } else if (task.status == TorrentStatus::kPaused) {
-        button_text = "▶ Resume";
-        button_color = Color::GreenLight;
-    } else if (task.status == TorrentStatus::kCompleted) {
-        button_text = "✓ Done";
-        button_color = Color::BlueLight;
-    } else {
-        button_text = "---";
-    }
-    
-    auto button_element = 
-        hbox({
-            filler(),
-            vbox({
-                text(button_text) | bold | color(button_color) | center,
-                text("Press P") | dim | center
-            }) | size(HEIGHT, EQUAL, 3) | border,
-            filler()
+        auto progress_element = vbox({
+            hbox({
+                text("["),
+                text(progress_bar) | color(Color::GreenLight),
+                text("] "),
+                text(std::to_string(percentage) + "%") | bold
+            }) | center,
+            hbox({
+                filler(),
+                text("Pieces: " + std::to_string(task.downloaded_pieces_count) + 
+                     "/" + std::to_string(task.total_pieces_count)) | dim,
+                filler()
+            })
         });
+        
+        task_info.push_back(progress_element);
+        
+    }
+    
+    auto info_panel = window(
+        text(" DOWNLOAD INFO ") | bold | center,
+        vbox(task_info) | frame | size(HEIGHT, LESS_THAN, 12)
+    );
     
     Elements log_entries;
     for (const auto& log : logs) {
         std::string log_text = log;
-        if (log_text.length() > 80) {
-            log_text = log_text.substr(0, 77) + "...";
+        if (log_text.length() > 90) {
+            log_text = log_text.substr(0, 87) + "...";
         }
         
-        auto log_element = text(" " + log_text);
+        std::string log_prefix = " ";
+        Color log_color = Color::GrayLight;
         
         if (log.find("[ERROR]") != std::string::npos) {
-            log_element = log_element | color(Color::RedLight);
+            log_prefix = "! ";
+            log_color = Color::RedLight;
         } else if (log.find("[WARNING]") != std::string::npos) {
-            log_element = log_element | color(Color::YellowLight);
+            log_prefix = "* ";
+            log_color = Color::YellowLight;
         } else if (log.find("[SYSTEM]") != std::string::npos) {
-            log_element = log_element | color(Color::BlueLight);
+            log_prefix = "> ";
+            log_color = Color::BlueLight;
+        } else if (log.find("[INFO]") != std::string::npos) {
+            log_prefix = "- ";
+            log_color = Color::GreenLight;
         }
+        
+        auto log_element = hbox({
+            text(log_prefix) | color(log_color),
+            text(log_text) | color(log_color)
+        });
         
         log_entries.push_back(log_element);
     }
     
-    auto log_panel = window(text("Activity Log"), 
+    auto log_panel = window(
+        text(" ACTIVITY LOG ") | bold | center,
         vbox(log_entries) | frame | flex
     );
     
-    auto control_panel = window(text("Control Panel"),
-        vbox({
-            button_element,
-            filler()
-        }) | size(WIDTH, EQUAL, 25)
-    );
+    auto footer = hbox({
+        text(" Press "),
+        text(" Q ") | bold | inverted,
+        text(" to quit ")
+    }) | center | dim;
     
     return vbox({
         header,
         separator(),
-        hbox({
-            task_panel | flex,
-            separator(),
-            control_panel
-        }) | flex,
+        info_panel,
         separator(),
+        text("") | size(HEIGHT, EQUAL, 1),
         log_panel | flex,
         separator(),
-        text("Controls: P=Pause/Resume, Q=Quit") | center | dim
+        footer
     });
-}
-
-void TorrentUI::UpdateUI() {
-    while (running_) {
-        std::this_thread::sleep_for(500ms);
-    }
 }
 
 void TorrentUI::Run() {
@@ -228,9 +199,10 @@ void TorrentUI::Run() {
     
     std::atomic<bool> should_exit{false};
     
-    component |= CatchEvent([&](Event event) {
-        if (event == Event::Character('q') || event == Event::Character('Q') || 
-            event == Event::Escape) {
+    component = component | ftxui::CatchEvent([&](ftxui::Event event) {
+        if (event == ftxui::Event::Character('q') ||
+            event == ftxui::Event::Character('Q') ||
+            event == ftxui::Event::Escape) {
             should_exit = true;
             screen.Exit();
             return true;
@@ -248,6 +220,7 @@ void TorrentUI::Run() {
     screen.Loop(component);
     
     running_ = false;
+    should_exit = true;
     if (update_thread_.joinable()) {
         update_thread_.join();
     }

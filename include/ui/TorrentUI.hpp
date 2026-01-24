@@ -21,10 +21,8 @@ private:
     std::atomic<bool> running_{true};
     std::thread update_thread_;
     
-    ftxui::Component pause_button_;
     ftxui::Component main_component_;
     
-    void TogglePause();
     void UpdateUI();
     ftxui::Component BuildUI();
     ftxui::Element Render();

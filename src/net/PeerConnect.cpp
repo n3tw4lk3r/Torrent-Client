@@ -93,7 +93,7 @@ void PeerConnect::MainLoop() {
             std::this_thread::sleep_for(50ms);
             continue;
         }
-
+        
         if (!is_choked && !block_is_pending) {
             auto block = piece_is_in_progress->GetFirstMissingBlock();
             if (block) {
