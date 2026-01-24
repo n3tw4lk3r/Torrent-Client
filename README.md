@@ -6,7 +6,6 @@ This is an old university project of mine which I aim to refactor and enhance.
 
 ## Screenshots
 ![Download In Progress](assets/images/downloading.png)
-![Paused While Downloading](assets/images/paused.png)
 ![Download completed](assets/images/finished.png)
 
 ## Features
