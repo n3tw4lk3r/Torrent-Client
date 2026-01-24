@@ -1,57 +1,59 @@
 #pragma once
 
-#include "net/TcpConnect.hpp"
 #include "net/Peer.hpp"
 #include "core/TorrentFile.hpp"
 #include "core/PieceStorage.hpp"
+#include "net/TcpConnect.hpp"
 #include <atomic>
-#include <string>
 
 class PeerPiecesAvailability {
 public:
     PeerPiecesAvailability() = default;
-    explicit PeerPiecesAvailability(std::string bitfield, size_t size);
+    PeerPiecesAvailability(std::string bitfield, size_t size);
+
     bool IsPieceAvailable(size_t piece_index) const;
-    void SetPieceAvailability(size_t piece_index);
-    size_t Size() const;
+    void SetPieceAvailability(size_t pieceIndex);
 
 private:
     std::string bitfield;
-    size_t size;
+    size_t size = 0;
 };
 
 class PeerConnect {
 public:
-    PeerConnect(const Peer& peer, const TorrentFile& torrent_file, std::string self_peer_id, PieceStorage& piece_storage);
-    ~PeerConnect() = default;
+    PeerConnect(const Peer& peer,
+                const TorrentFile& torrent_file,
+                std::string self_peer_id,
+                PieceStorage& piece_storage);
 
-    void HandleConnectionError();
     void Run();
     void Terminate();
-    bool Failed() const;
-    bool IsDownloading() const;
     bool IsTerminated() const;
     std::string GetPeerId() const;
+    bool Failed() const;
 
 private:
-    const TorrentFile& torrent_file;
-    TcpConnect socket;
-    const std::string self_peer_id;
-    std::string peer_id;
-    PeerPiecesAvailability pieces_availability;
-    std::atomic<bool> is_terminated = false;
-    bool is_choked = true;
-    PiecePtr piece_is_in_progress;
-    PieceStorage& piece_storage;
-    bool block_is_pending = false;
-    bool has_failed = false;
-
-    void PerformHandshake();
     bool EstablishConnection();
+    void PerformHandshake();
     void ReceiveBitfield();
     void SendInterested();
-    void RequestPiece(const Block* block);
     void MainLoop();
+    void ProcessMessage(const std::string& message_data);
+    void RequestPiece(const Block* block);
+    void HandleConnectionError();
     PiecePtr GetNextAvailablePiece();
-    void ProcessMessage(const std::string& messageData);
+
+    TorrentFile torrent_file;
+    TcpConnect socket;
+    std::string self_peer_id;
+    std::string peer_id;
+
+    PeerPiecesAvailability pieces_availability;
+    PieceStorage& piece_storage;
+
+    PiecePtr piece_is_in_progress;
+    bool block_is_pending = false;
+    bool is_choked = true;
+    std::atomic<bool> is_terminated = false;
+    bool has_failed = false;
 };

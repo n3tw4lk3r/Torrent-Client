@@ -7,6 +7,7 @@
 #include <queue>
 #include <mutex>
 #include <vector>
+#include <unordered_set>
 
 class PieceStorage {
 public:
@@ -22,24 +23,22 @@ public:
     size_t PiecesSavedToDiscCount() const;
 
     void CloseOutputFile();
-    void PrintMissingPieces() const;
     bool IsDownloadComplete() const;
     bool HasActiveWork() const;
     std::vector<size_t> GetMissingPieces() const;
     void ForceRequeueMissingPieces();
 
-    void PrintDownloadStatus() const;
-    void PrintDetailedStatus() const;
-    size_t GetMissingPiecesCount() const;
 private:
     void SavePieceToDisk(const PiecePtr& piece);
     void InitializeOutputFile();
 
     std::queue<PiecePtr> remaining_pieces_queue;
     mutable std::mutex queue_mutex;
+
     std::ofstream file;
     mutable std::mutex file_mutex;
-    std::vector<size_t> indices_of_pieces_saved_to_disk;
+
+    std::unordered_set<size_t> saved_pieces;
 
     std::filesystem::path output_directory;
     size_t default_piece_length;
