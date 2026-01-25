@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <unordered_set>
 
 #include "core/PieceStorage.hpp"
 #include "core/TorrentFile.hpp"
@@ -40,9 +41,11 @@ private:
     void SendInterested();
     void MainLoop();
     void ProcessMessage(const std::string& message_data);
-    void RequestPiece(const Block* block);
+    void RequestBlock(const Block* block);
     void HandleConnectionError();
     PiecePtr GetNextAvailablePiece();
+
+    static constexpr int kMaxInflightBlocks = 16;
 
     TorrentFile torrent_file;
     TcpConnection socket;
@@ -53,7 +56,8 @@ private:
     PieceStorage& piece_storage;
 
     PiecePtr piece_in_progress;
-    bool block_is_pending = false;
+    std::unordered_set<size_t> inflight_offsets;
+
     bool is_choked = true;
     std::atomic<bool> is_terminated = false;
     bool has_failed = false;

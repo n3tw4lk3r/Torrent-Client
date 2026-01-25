@@ -97,19 +97,26 @@ void PeerConnection::MainLoop() {
     while (!is_terminated) {
         if (!piece_in_progress) {
             piece_in_progress = GetNextAvailablePiece();
+            inflight_offsets.clear();
         }
 
         if (!piece_in_progress) {
-            std::this_thread::sleep_for(50ms);
+            std::this_thread::sleep_for(5ms);
             continue;
         }
-        
-        if (!is_choked && !block_is_pending) {
+
+        while (!is_choked && inflight_offsets.size() < kMaxInflightBlocks) {
             auto block = piece_in_progress->GetFirstMissingBlock();
-            if (block) {
-                RequestPiece(block);
-                block_is_pending = true;
+            if (!block) {
+                break;
             }
+
+            if (inflight_offsets.count(block->offset)) {
+                break;
+            }
+
+            RequestBlock(block);
+            inflight_offsets.insert(block->offset);
         }
 
         auto msg = socket.ReceiveData();
@@ -138,28 +145,47 @@ PiecePtr PeerConnection::GetNextAvailablePiece() {
 void PeerConnection::ProcessMessage(const std::string& data) {
     auto msg = Message::Parse(data);
 
-    if (msg.id == MessageId::kUnchoke) {
-        is_choked = false;
-    }
+    switch (msg.id) {
+        case MessageId::kUnchoke:
+            is_choked = false;
+            break;
 
-    if (msg.id == MessageId::kPiece) {
-        size_t index = utils::BytesToInt32(msg.payload.substr(0, 4));
-        size_t offset = utils::BytesToInt32(msg.payload.substr(4, 4));
-        auto block = msg.payload.substr(8);
+        case MessageId::kChoke:
+            is_choked = true;
+            inflight_offsets.clear();
+            break;
 
-        if (piece_in_progress && piece_in_progress->GetIndex() == index) {
-            piece_in_progress->SaveBlock(offset, block);
-            block_is_pending = false;
-
-            if (piece_in_progress->AllBlocksRetrieved()) {
-                piece_storage.PieceProcessed(piece_in_progress);
-                piece_in_progress.reset();
-            }
+        case MessageId::kHave: {
+            size_t index = utils::BytesToInt32(msg.payload);
+            pieces_availability.SetPieceAvailability(index);
+            break;
         }
+
+        case MessageId::kPiece: {
+            size_t index = utils::BytesToInt32(msg.payload.substr(0, 4));
+            size_t offset = utils::BytesToInt32(msg.payload.substr(4, 4));
+            auto block = msg.payload.substr(8);
+
+            if (piece_in_progress && piece_in_progress->GetIndex() == index) {
+
+                piece_in_progress->SaveBlock(offset, block);
+                inflight_offsets.erase(offset);
+
+                if (piece_in_progress->AllBlocksRetrieved()) {
+                    piece_storage.PieceProcessed(piece_in_progress);
+                    piece_in_progress.reset();
+                    inflight_offsets.clear();
+                }
+            }
+            break;
+        }
+
+        default:
+            break;
     }
 }
 
-void PeerConnection::RequestPiece(const Block* block) {
+void PeerConnection::RequestBlock(const Block* block) {
     std::string payload;
     payload += utils::Int32ToBytes(block->piece);
     payload += utils::Int32ToBytes(block->offset);

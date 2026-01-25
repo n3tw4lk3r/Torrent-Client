@@ -53,6 +53,10 @@ void TcpConnection::EstablishConnection() {
         throw std::runtime_error("Failed to create socket: " + std::string(strerror(errno)));
     }
 
+    int buffer = 512 * 1024;
+    setsockopt(socket_fd, SOL_SOCKET, SO_RCVBUF, &buffer, sizeof(buffer));
+    setsockopt(socket_fd, SOL_SOCKET, SO_SNDBUF, &buffer, sizeof(buffer));
+
     struct sockaddr_in server;
     server.sin_addr.s_addr = inet_addr(ip.c_str());
     server.sin_family = AF_INET;
@@ -138,7 +142,7 @@ std::string TcpConnection::ReceiveData(size_t buffer_size) const {
                 break;
 
             case 0:
-                throw std::runtime_error("Read timeout");
+                return "";
                 break;
 
             default: {
@@ -168,7 +172,7 @@ std::string TcpConnection::ReceiveData(size_t buffer_size) const {
             throw std::runtime_error("Connection terminated");
         }
 
-        constexpr size_t kBufferSize = 4096;
+        static constexpr size_t kBufferSize = 64 * 1024;
         char buffer[kBufferSize];
         int read_size = std::min(static_cast<int>(kBufferSize), to_read);
         
