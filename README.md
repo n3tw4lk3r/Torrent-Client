@@ -120,7 +120,7 @@ The project is split into several logical modules, each responsible for a distin
 - No DHT support
 - No magnet link support
 
-## Planned Features And Fixes:
+## Planned Features and Fixes:
 ### Near Future
 - Proper shutdown when pressing Q in TUI
 - Fix duplicate "download finished" log messages
