@@ -1,8 +1,9 @@
 ### Torrent-Client
 
-A lightweight C++ BitTorrent client implementation supporting downloads of single-file torrents, using both TCP and UDP trackers. Now has Text User Interface.
+A BitTorrent client written in C++ that supports downloading **single-file torrents** using both **TCP and UDP trackers**.  
+The project features a **multi-threaded architecture** and a **text-based user interface (TUI)** built with FTXUI.
 
-This is an old university project of mine which I aim to refactor and enhance.
+This project originally started as a university assignment and is now being refactored and improved.
 
 ## Screenshots
 ![Download In Progress](assets/images/downloading.png)
@@ -11,15 +12,15 @@ This is an old university project of mine which I aim to refactor and enhance.
 ## Features
 - Single-file torrent downloads
 - Multi-threaded peer connections
+- TCP and UDP tracker support
 - Compact peer protocol support
-- Text User Interface
+- Text User Interface (TUI)
 
 ## Dependencies
 Required
 - C++17 compatible compiler
 - CMake (3.14 or higher)
 - OpenSSL (for SHA-1 hashing)
-- libcurl (for HTTP tracker communication)
 
 Downloaded Automatically
 - FTXUI - for TUI
@@ -70,22 +71,48 @@ src/simple-torrent-tui ../resources/ubuntu-25.10-live-server-amd64.iso.torrent d
 ```
 
 ## Main Components
-- PieceStorage
-Manages file pieces and disk storage
-- TorrentClient
-Main client class coordinating download process
-- TorrentTracker
-Handles communication with TCP trackers
-- UdpTracker
-Handles communication with UDP trackers
-- PeerConnect
-Manages individual peer connections
-- TcpConnect
-Handles TCP connections
-- UdpClient
-Handles UDP connections
-- BencodeParser
-Parses Bencode formatted data
+
+The project is split into several logical modules, each responsible for a distinct part of the BitTorrent protocol and application workflow.
+
+### Core
+
+- **TorrentClient**  
+  The central orchestrator of the download process.  
+  Coordinates trackers, peer connections, piece storage, and overall torrent state.
+
+- **TorrentFile**  
+  Represents parsed `.torrent` metadata, including piece hashes, announce URLs, and file information.
+
+- **TorrentTracker**  
+  Handles communication with HTTP/TCP trackers.
+
+- **PieceStorage**  
+  Manages torrent pieces and blocks, tracks download progress, verifies piece hashes, and writes completed data to disk.
+
+- **Piece**  
+  Represents a single torrent piece split into blocks and tracks block-level download state.
+
+### Networking
+
+- **PeerConnection**  
+  Manages communication with a single peer: handshake, bitfield exchange, piece requests, and message processing.
+
+- **TCPConnection**  
+  Low-level abstraction over TCP sockets used for peer communication.
+
+- **UdpConnection**  
+  Wrapper over UDP sockets, used primarily for tracker communication.
+
+- **UdpTracker**  
+  Implements the UDP tracker protocol (connect + announce).
+
+### Protocol & Utilities
+
+- **Message**  
+  Encapsulates BitTorrent peer protocol messages and provides parsing and serialization logic.
+
+- **BencodeParser**  
+  Parses Bencode-encoded data from strings and `.torrent` files.
 
 ## Limitations
 - Supports only single-file torrents (no multi-file/directory structure)
@@ -93,12 +120,12 @@ Parses Bencode formatted data
 - No DHT support
 - No magnet link support
 
-## Features To Implement:
+## Planned Features And Fixes:
+### Near Future
+- Proper shutdown when pressing Q in TUI
+- Fix duplicate "download finished" log messages
 
-### Should do at somewhat near future
-- Improve code quality
-
-### Will implement some day
-- Multi-file support
-- Seeding
+### Someday
+- Multi-file torrent support
+- Seeding/upload support
 
