@@ -86,6 +86,9 @@ The project is split into several logical modules, each responsible for a distin
 - **TorrentTracker**  
   Handles communication with HTTP/TCP trackers.
 
+- **UdpTracker**  
+  Implements the UDP tracker protocol (connect + announce).
+
 - **PieceStorage**  
   Manages torrent pieces and blocks, tracks download progress, verifies piece hashes, and writes completed data to disk.
 
@@ -102,9 +105,6 @@ The project is split into several logical modules, each responsible for a distin
 
 - **UdpConnection**  
   Wrapper over UDP sockets, used primarily for tracker communication.
-
-- **UdpTracker**  
-  Implements the UDP tracker protocol (connect + announce).
 
 ### Protocol & Utilities
 
