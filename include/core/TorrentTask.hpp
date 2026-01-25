@@ -24,8 +24,6 @@ struct TorrentTask {
     uint64_t downloaded;
     uint64_t uploaded;
     
-    uint64_t download_speed;
-    uint64_t upload_speed;
     int connected_peers;
     int total_peers_count;
     
@@ -45,8 +43,6 @@ struct TorrentTask {
                     total_size(0),
                     downloaded(0),
                     uploaded(0),
-                    download_speed(0),
-                    upload_speed(0),
                     connected_peers(0),
                     total_peers_count(0),
                     total_pieces_count(0),
@@ -55,7 +51,6 @@ struct TorrentTask {
     void SetConnectedPeers(int new_count);
     std::string GetFormattedSize() const;
     std::string GetFormattedDownloaded() const;
-    std::string GetFormattedSpeed() const;
     std::string GetFormattedProgress() const;
     std::string GetStatusString() const;
     std::string GetPeersString() const;

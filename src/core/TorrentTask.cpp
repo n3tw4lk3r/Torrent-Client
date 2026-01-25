@@ -12,7 +12,7 @@ std::string TorrentTask::FormatBytes(uint64_t bytes) const {
     
     while (size >= 1024.0 && unit_index < units.size() - 1) {
         size /= 1024.0;
-        ++unit_index;
+        unit_index++;
     }
     
     std::ostringstream oss;
@@ -30,13 +30,6 @@ std::string TorrentTask::GetFormattedSize() const {
 
 std::string TorrentTask::GetFormattedDownloaded() const {
     return FormatBytes(downloaded);
-}
-
-std::string TorrentTask::GetFormattedSpeed() const {
-    if (download_speed == 0) {
-        return "0 B/s";
-    }
-    return FormatBytes(download_speed) + "/s";
 }
 
 std::string TorrentTask::GetFormattedProgress() const {
