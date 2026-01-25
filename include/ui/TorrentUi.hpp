@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <memory>
 #include <thread>
 
@@ -20,6 +21,7 @@ private:
     std::unique_ptr<TorrentClient> client_;
     std::atomic<bool> running_{true};
     std::thread update_thread_;
+    std::chrono::steady_clock::time_point start_time_;
     
     ftxui::Component main_component_;
     

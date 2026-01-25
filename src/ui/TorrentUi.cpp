@@ -3,6 +3,9 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <chrono>
+#include <sstream>
+#include <iomanip>
 
 using namespace std::chrono_literals;
 
@@ -10,6 +13,7 @@ TorrentUi::TorrentUi(std::unique_ptr<TorrentClient> client) :
     client_(std::move(client))
 {
     main_component_ = BuildUi();
+    start_time_ = std::chrono::steady_clock::now();
 }
 
 TorrentUi::~TorrentUi() {
@@ -38,6 +42,46 @@ ftxui::Component TorrentUi::BuildUi() {
     return component;
 }
 
+std::string FormatDuration(std::chrono::seconds duration) {
+    auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
+    duration -= hours;
+    auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
+    duration -= minutes;
+    auto seconds = duration;
+    
+    std::ostringstream oss;
+    if (hours.count() > 0) {
+        oss << hours.count() << "h ";
+    }
+    if (minutes.count() > 0 || hours.count() > 0) {
+        oss << minutes.count() << "m ";
+    }
+    oss << seconds.count() << "s";
+    return oss.str();
+}
+
+std::string FormatRemainingTime(uint64_t downloaded, uint64_t total_size, 
+                                uint64_t download_speed) {
+    if (download_speed == 0 || downloaded >= total_size) {
+        return "--:--";
+    }
+    
+    uint64_t remaining_bytes = total_size - downloaded;
+    double remaining_seconds = static_cast<double>(remaining_bytes) / download_speed;
+    
+    auto hours = static_cast<int>(remaining_seconds / 3600);
+    auto minutes = static_cast<int>((remaining_seconds - hours * 3600) / 60);
+    auto seconds = static_cast<int>(remaining_seconds) % 60;
+    
+    std::ostringstream oss;
+    if (hours > 0) {
+        oss << std::setfill('0') << std::setw(2) << hours << ":";
+    }
+    oss << std::setfill('0') << std::setw(2) << minutes << ":"
+        << std::setfill('0') << std::setw(2) << seconds;
+    return oss.str();
+}
+
 ftxui::Element TorrentUi::Render() {
     using namespace ftxui;
     
@@ -49,24 +93,19 @@ ftxui::Element TorrentUi::Render() {
     }) | center | border;
     
     Color status_color = Color::GrayLight;
-    std::string status_symbol = "  ";
     
     switch (task.status) {
         case TorrentStatus::kDownloading:
             status_color = Color::GreenLight;
-            status_symbol = ">>";
             break;
         case TorrentStatus::kCompleted:
             status_color = Color::CyanLight;
-            status_symbol = "OK";
             break;
         case TorrentStatus::kError:
             status_color = Color::RedLight;
-            status_symbol = "!!";
             break;
         default:
             status_color = Color::GrayLight;
-            status_symbol = "--";
     }
     
     Elements task_info;
@@ -77,64 +116,86 @@ ftxui::Element TorrentUi::Render() {
     }
     
     task_info.push_back(hbox({
-        text("File:    ") | bold,
-        text(display_filename)
+        filler(),
+        text("File: ") | bold,
+        text(display_filename),
+        filler()
     }));
     
     task_info.push_back(hbox({
-        text("Status:  ") | bold,
-        text("[" + status_symbol + "] " + task.GetStatusString()) | bold | color(status_color)
+        filler(),
+        text("Status: ") | bold,
+        text(task.GetStatusString()) | bold | color(status_color),
+        filler()
     }));
     
     if (task.total_size > 0) {
         task_info.push_back(hbox({
-            text("Size:    ") | bold,
-            text(task.GetFormattedSize())
+            filler(), 
+            text("Size: ") | bold,
+            text(task.GetFormattedSize()),
+            filler()
+        }));
+        
+        task_info.push_back(hbox({
+            filler(),
+            text("Downloaded: ") | bold,
+            text(task.GetFormattedDownloaded() + " / " + task.GetFormattedSize()),
+            filler()
         }));
     }
     
     task_info.push_back(hbox({
-        text("Peers:   ") | bold,
-        text(task.GetPeersString())
+        filler(),
+        text("Peers: ") | bold,
+        text(task.GetPeersString()),
+        filler()
     }));
     
-    if (task.total_pieces_count > 0 && task.status == TorrentStatus::kDownloading) {
-        task_info.push_back(text(""));
-        
-        const int kBarWidth = 50;
-        int filled = static_cast<int>((task.progress / 100.0) * kBarWidth);
-        int percentage = static_cast<int>(task.progress);
-        
-        std::string progress_bar;
-        for (int i = 0; i < kBarWidth; ++i) {
-            if (i < filled) {
-                progress_bar += "#";
-            } else {
-                progress_bar += ".";
-            }
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - start_time_);
+    task_info.push_back(hbox({
+        filler(),
+        text("Time elapsed: ") | bold,
+        text(FormatDuration(elapsed)),
+        filler(),
+    }));
+    
+    task_info.push_back(text(""));
+    
+    const int kBarWidth = 50;
+    int filled = static_cast<int>((task.progress / 100.0) * kBarWidth);
+    int percentage = static_cast<int>(task.progress);
+    
+    std::string progress_bar;
+    for (int i = 0; i < kBarWidth; ++i) {
+        if (i < filled) {
+            progress_bar += "#";
+        } else {
+            progress_bar += ".";
         }
-        
-        auto progress_element = vbox({
-            hbox({
-                text("["),
-                text(progress_bar) | color(Color::GreenLight),
-                text("] "),
-                text(std::to_string(percentage) + "%") | bold
-            }) | center,
-            hbox({
-                filler(),
-                text("Pieces: " + std::to_string(task.downloaded_pieces_count) + 
-                     "/" + std::to_string(task.total_pieces_count)) | dim,
-                filler()
-            })
-        });
-        
-        task_info.push_back(progress_element);
     }
+    
+    auto progress_element = vbox({
+        hbox({
+            text("["),
+            text(progress_bar) | color(Color::GreenLight),
+            text("] "),
+            text(std::to_string(percentage) + "%") | bold
+        }) | center,
+        hbox({
+            filler(),
+            text("Pieces: " + std::to_string(task.downloaded_pieces_count) + 
+                 "/" + std::to_string(task.total_pieces_count)) | dim,
+            filler()
+        })
+    });
+    
+    task_info.push_back(progress_element);
     
     auto info_panel = window(
         text(" DOWNLOAD INFO ") | bold | center,
-        vbox(task_info) | frame | size(HEIGHT, LESS_THAN, 12)
+        vbox(task_info) | frame | size(HEIGHT, LESS_THAN, 20)
     );
     
     Elements log_entries;
@@ -144,25 +205,9 @@ ftxui::Element TorrentUi::Render() {
             log_text = log_text.substr(0, 87) + "...";
         }
         
-        std::string log_prefix = " ";
         Color log_color = Color::GrayLight;
         
-        if (log.find("[ERROR]") != std::string::npos) {
-            log_prefix = "! ";
-            log_color = Color::RedLight;
-        } else if (log.find("[WARNING]") != std::string::npos) {
-            log_prefix = "* ";
-            log_color = Color::YellowLight;
-        } else if (log.find("[SYSTEM]") != std::string::npos) {
-            log_prefix = "> ";
-            log_color = Color::BlueLight;
-        } else if (log.find("[INFO]") != std::string::npos) {
-            log_prefix = "- ";
-            log_color = Color::GreenLight;
-        }
-        
         auto log_element = hbox({
-            text(log_prefix) | color(log_color),
             text(log_text) | color(log_color)
         });
         
