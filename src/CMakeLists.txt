@@ -1,17 +1,17 @@
 add_library(core STATIC
+    core/HttpTracker.cpp
     core/Piece.cpp
     core/PieceStorage.cpp
     core/TorrentClient.cpp
     core/TorrentFile.cpp
-    core/TorrentTracker.cpp
-    core/UdpTracker.cpp
     core/TorrentTask.cpp
-    utils/BencodeParser.cpp
-    utils/byte_tools.cpp
+    core/UdpTracker.cpp
     net/Message.cpp
     net/PeerConnection.cpp
     net/TcpConnection.cpp
     net/UdpConnection.cpp
+    utils/BencodeParser.cpp
+    utils/byte_tools.cpp
 )
 
 target_include_directories(core PRIVATE

@@ -5,10 +5,10 @@
 #include <mutex>
 #include <vector>
 
+#include "core/HttpTracker.hpp"
 #include "core/PieceStorage.hpp"
 #include "core/TorrentFile.hpp"
 #include "core/TorrentTask.hpp"
-#include "core/TorrentTracker.hpp"
 #include "net/PeerConnection.hpp"
 
 class TorrentClient {
@@ -42,12 +42,12 @@ private:
     void AddLogMessage(const std::string& message);
     void UpdateTaskStatus(TorrentStatus status);
     void UpdateTaskFromPieceStorage(const PieceStorage& storage);
-    void UpdateTaskFromTracker(const TorrentTracker& tracker);
+    void UpdateTaskFromTracker(const HttpTracker& tracker);
 
     std::string GenerateRandomSuffix(size_t length = 4);
     bool RunDownloadMultithread(PieceStorage& pieces, 
                                 const TorrentFile& torrent_file,
-                                const TorrentTracker& tracker);
+                                const HttpTracker& tracker);
     void DownloadFromTracker(const TorrentFile& torrent_file, 
                              PieceStorage& pieces);
 };

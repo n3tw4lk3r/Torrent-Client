@@ -83,11 +83,11 @@ The project is split into several logical modules, each responsible for a distin
 - **TorrentFile**  
   Represents parsed `.torrent` metadata, including piece hashes, announce URLs, and file information.
 
-- **TorrentTracker**  
+- **HttpTracker**  
   Handles communication with HTTP/TCP trackers.
 
 - **UdpTracker**  
-  Implements the UDP tracker protocol (connect + announce).
+  Handles communication with UDP trackers.
 
 - **PieceStorage**  
   Manages torrent pieces and blocks, tracks download progress, verifies piece hashes, and writes completed data to disk.

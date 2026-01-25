@@ -8,9 +8,9 @@
 #include "core/UdpTracker.hpp"
 #include "net/Peer.hpp"
 
-class TorrentTracker {
+class HttpTracker {
 public:
-    explicit TorrentTracker(const std::string& url);
+    explicit HttpTracker(const std::string& url);
 
     void UpdatePeers(const TorrentFile& torrent_file,
                      const std::string& peer_id,

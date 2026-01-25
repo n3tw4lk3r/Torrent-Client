@@ -1,13 +1,13 @@
-#include "core/TorrentTracker.hpp"
+#include "core/HttpTracker.hpp"
 
 #include <cpr/cpr.h>
 
 #include "core/UdpTracker.hpp"
 #include "utils/BencodeParser.hpp"
 
-TorrentTracker::TorrentTracker(const std::string& url) : tracker_url(url) {}
+HttpTracker::HttpTracker(const std::string& url) : tracker_url(url) {}
 
-void TorrentTracker::UpdatePeers(const TorrentFile& torrent_file,
+void HttpTracker::UpdatePeers(const TorrentFile& torrent_file,
                                  const std::string& peer_id,
                                  int port) {
     std::vector<std::string> all_trackers = { tracker_url };
@@ -44,15 +44,15 @@ void TorrentTracker::UpdatePeers(const TorrentFile& torrent_file,
     }
 }
 
-bool TorrentTracker::IsUdpTracker() const {
+bool HttpTracker::IsUdpTracker() const {
     return IsUdpTracker(tracker_url);
 }
 
-bool TorrentTracker::IsUdpTracker(const std::string& url) const {
+bool HttpTracker::IsUdpTracker(const std::string& url) const {
     return url.substr(0, 6) == "udp://";
 }
 
-std::pair<std::string, int> TorrentTracker::ParseUdpUrl(const std::string& url) {
+std::pair<std::string, int> HttpTracker::ParseUdpUrl(const std::string& url) {
     if (url.substr(0, 6) != "udp://") {
         throw std::runtime_error("Invalid UDP URL: " + url);
     }
@@ -74,7 +74,7 @@ std::pair<std::string, int> TorrentTracker::ParseUdpUrl(const std::string& url) 
     }
 }
 
-Peer TorrentTracker::ConvertTrackerPeer(const UdpTracker::TrackerPeer& tracker_peer) {
+Peer HttpTracker::ConvertTrackerPeer(const UdpTracker::TrackerPeer& tracker_peer) {
     Peer peer;
 
     peer.ip = std::to_string((tracker_peer.ip >> 24) & 0xFF) + "." +
@@ -87,7 +87,7 @@ Peer TorrentTracker::ConvertTrackerPeer(const UdpTracker::TrackerPeer& tracker_p
     return peer;
 }
 
-void TorrentTracker::UpdatePeersHttp(const TorrentFile& torrent_file,
+void HttpTracker::UpdatePeersHttp(const TorrentFile& torrent_file,
                                      const std::string& peer_id,
                                      int port,
                                      const std::string& url) {
@@ -114,7 +114,7 @@ void TorrentTracker::UpdatePeersHttp(const TorrentFile& torrent_file,
     ParseTrackerResponse(tracker_response.text, url);
 }
 
-void TorrentTracker::UpdatePeersUdp(const TorrentFile& torrent_file,
+void HttpTracker::UpdatePeersUdp(const TorrentFile& torrent_file,
                                     const std::string& peer_id,
                                     int port,
                                     const std::string& url) {
@@ -144,11 +144,11 @@ void TorrentTracker::UpdatePeersUdp(const TorrentFile& torrent_file,
     }
 }
 
-void TorrentTracker::ParseTrackerResponse(const std::string& response) {
+void HttpTracker::ParseTrackerResponse(const std::string& response) {
     ParseTrackerResponse(response, tracker_url);
 }
 
-void TorrentTracker::ParseTrackerResponse(const std::string& response, const std::string& url) {
+void HttpTracker::ParseTrackerResponse(const std::string& response, const std::string& url) {
     utils::BencodeParser parser;
     auto parsed = parser.ParseFromString(response);
 
@@ -178,7 +178,7 @@ void TorrentTracker::ParseTrackerResponse(const std::string& response, const std
     ParseCompactPeers(peers_data);
 }
 
-void TorrentTracker::ParseCompactPeers(const std::string& peers_data) {
+void HttpTracker::ParseCompactPeers(const std::string& peers_data) {
     peers.clear();
 
     if (peers_data.size() % 6 == 0 && !peers_data.empty()) {
@@ -188,7 +188,7 @@ void TorrentTracker::ParseCompactPeers(const std::string& peers_data) {
     }
 }
 
-void TorrentTracker::ParseCompactBinaryPeers(const std::string& peers_data) {
+void HttpTracker::ParseCompactBinaryPeers(const std::string& peers_data) {
     static constexpr size_t kPeerSize = 6;
     const size_t peer_count = peers_data.size() / kPeerSize;
     peers.reserve(peer_count);
@@ -206,23 +206,23 @@ void TorrentTracker::ParseCompactBinaryPeers(const std::string& peers_data) {
     }
 }
 
-void TorrentTracker::ParseDictionaryPeers(const std::string& peers_data) {
+void HttpTracker::ParseDictionaryPeers(const std::string& peers_data) {
     static_cast<void>(peers_data);
     throw std::runtime_error("Non-compact peer format not supported. Use compact=1 in tracker request.");
 }
 
-const std::vector<Peer>& TorrentTracker::GetPeers() const {
+const std::vector<Peer>& HttpTracker::GetPeers() const {
     return peers;
 }
 
-std::string TorrentTracker::GetTrackerUrl() const {
+std::string HttpTracker::GetTrackerUrl() const {
     return tracker_url;
 }
 
-bool TorrentTracker::IsWorking() const {
+bool HttpTracker::IsWorking() const {
     return !peers.empty();
 }
 
-void TorrentTracker::PrintStats() const {
+void HttpTracker::PrintStats() const {
 
 }

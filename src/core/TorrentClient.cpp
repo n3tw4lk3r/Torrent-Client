@@ -31,7 +31,7 @@ std::string TorrentClient::GenerateRandomSuffix(size_t length) {
 
 bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
                                            const TorrentFile& torrent_file,
-                                           const TorrentTracker& tracker) {
+                                           const HttpTracker& tracker) {
     UpdateTaskStatus(TorrentStatus::kDownloading);
     UpdateTaskFromTracker(tracker);
     AddLogMessage("Starting download with " + std::to_string(tracker.GetPeers().size()) + " peers");
@@ -182,7 +182,7 @@ void TorrentClient::DownloadFromTracker(const TorrentFile& torrent_file, PieceSt
 
         for (size_t i = 0; i < trackers.size() && !is_terminated; ++i) {
             try {
-                TorrentTracker tracker(trackers[i]);
+                HttpTracker tracker(trackers[i]);
                 tracker.UpdatePeers(torrent_file, peer_id, 12345);
                 const auto& peers = tracker.GetPeers();
                 all_peers.insert(all_peers.end(), peers.begin(), peers.end());
@@ -221,7 +221,7 @@ void TorrentClient::DownloadFromTracker(const TorrentFile& torrent_file, PieceSt
             ++retry_count;
         }
 
-        TorrentTracker combined_tracker(trackers[0]);
+        HttpTracker combined_tracker(trackers[0]);
         combined_tracker.SetPeers(all_peers);
 
         RunDownloadMultithread(pieces, torrent_file, combined_tracker);
@@ -361,7 +361,7 @@ void TorrentClient::UpdateTaskFromPieceStorage(const PieceStorage& storage) {
     current_task.last_update = std::chrono::system_clock::now();
 }
 
-void TorrentClient::UpdateTaskFromTracker(const TorrentTracker& tracker) {
+void TorrentClient::UpdateTaskFromTracker(const HttpTracker& tracker) {
     std::lock_guard<std::mutex> lock(task_mutex);
     current_task.total_peers_count = tracker.GetPeers().size();
     current_task.last_update = std::chrono::system_clock::now();
