@@ -1,6 +1,6 @@
 ### Torrent-Client
 
-A BitTorrent client written in C++ that supports downloading **single-file torrents** using both **TCP and UDP trackers**.  
+A BitTorrent client written in C++ that supports downloading **single-file torrents** using **HTTP and UDP trackers**.  
 The project features a **multi-threaded architecture** and a **text-based user interface (TUI)** built with FTXUI.
 
 This project originally started as a university assignment and is now being refactored and improved.
@@ -12,7 +12,7 @@ This project originally started as a university assignment and is now being refa
 ## Features
 - Single-file torrent downloads
 - Multi-threaded peer connections
-- TCP and UDP tracker support
+- HTTP and UDP tracker support
 - Compact peer protocol support
 - Text User Interface (TUI)
 
