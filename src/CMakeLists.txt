@@ -9,9 +9,9 @@ add_library(core STATIC
     utils/BencodeParser.cpp
     utils/byte_tools.cpp
     net/Message.cpp
-    net/PeerConnect.cpp
-    net/TcpConnect.cpp
-    net/UdpClient.cpp
+    net/PeerConnection.cpp
+    net/TcpConnection.cpp
+    net/UdpConnection.cpp
 )
 
 target_include_directories(core PRIVATE
@@ -40,7 +40,7 @@ target_link_libraries(simple-torrent-console
 
 add_executable(simple-torrent-tui
     main_tui.cpp
-    ui/TorrentUI.cpp
+    ui/TorrentUi.cpp
 )
 
 target_include_directories(simple-torrent-tui PRIVATE

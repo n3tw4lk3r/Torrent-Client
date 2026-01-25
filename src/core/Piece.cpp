@@ -1,14 +1,18 @@
 #include "core/Piece.hpp"
-#include "utils/byte_tools.hpp"
-#include <iostream>
+
 #include <algorithm>
 
-Piece::Piece(size_t index, size_t length, const std::string& hash)
-    : index(index), length(length), hash(hash), bytes_downloaded(0) {
+#include "utils/byte_tools.hpp"
 
+Piece::Piece(size_t index, size_t length, const std::string& hash) :
+    index(index),
+    length(length),
+    hash(hash),
+    bytes_downloaded(0)
+{
     size_t offset = 0;
     while (offset < length) {
-        size_t block_length = std::min(kBlockSize, length - offset);
+        size_t block_length = std::min(Block::kSize, length - offset);
         blocks.push_back(Block{index, offset, block_length, Block::kMissing, ""});
         offset += block_length;
     }
@@ -20,7 +24,7 @@ bool Piece::HashMatches() const {
     }
 
     std::string piece_data = GetData();
-    std::string calculated_hash = utils::CalculateSHA1(piece_data);
+    std::string calculated_hash = utils::CalculateSha1(piece_data);
     bool matches = (calculated_hash == hash);
 
     return matches;
@@ -40,12 +44,12 @@ size_t Piece::GetIndex() const {
     return index;
 }
 
-void Piece::SaveBlock(size_t blockOffset, std::string block_data) {
+void Piece::SaveBlock(size_t block_offset, std::string block_data) {
     for (auto& block : blocks) {
-        if (block.offset == blockOffset) {
+        if (block.offset == block_offset) {
             if (block.status != Block::kPending) {
-                throw std::runtime_error("Block at offset " + std::to_string(blockOffset) +
-                                       " is not in pending state");
+                throw std::runtime_error("Block at offset " + std::to_string(block_offset) +
+                                         " is not in pending state");
             }
 
             block.data = std::move(block_data);
@@ -54,7 +58,7 @@ void Piece::SaveBlock(size_t blockOffset, std::string block_data) {
             return;
         }
     }
-    throw std::runtime_error("Block not found at offset " + std::to_string(blockOffset));
+    throw std::runtime_error("Block not found at offset " + std::to_string(block_offset));
 }
 
 bool Piece::AllBlocksRetrieved() const {
@@ -79,10 +83,10 @@ std::string Piece::GetData() const {
 }
 
 std::string Piece::GetDataHash() const {
-    return utils::CalculateSHA1(GetData());
+    return utils::CalculateSha1(GetData());
 }
 
-const std::string& Piece::GetHash() const {
+std::string Piece::GetHash() const {
     return hash;
 }
 

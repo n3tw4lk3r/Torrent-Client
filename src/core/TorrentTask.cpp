@@ -1,16 +1,18 @@
 #include "core/TorrentTask.hpp"
-#include "core/PieceStorage.hpp"
-#include <sstream>
+
 #include <iomanip>
+#include <sstream>
+
+#include "core/PieceStorage.hpp"
 
 std::string TorrentTask::FormatBytes(uint64_t bytes) const {
     const std::vector<std::string> units = { "B", "KB", "MB", "GB", "TB" };
     size_t unit_index = 0;
     double size = static_cast<double>(bytes);
     
-    while (size >= 1024.0 && unit_index < 4) {
+    while (size >= 1024.0 && unit_index < units.size() - 1) {
         size /= 1024.0;
-        unit_index++;
+        ++unit_index;
     }
     
     std::ostringstream oss;
@@ -31,8 +33,9 @@ std::string TorrentTask::GetFormattedDownloaded() const {
 }
 
 std::string TorrentTask::GetFormattedSpeed() const {
-    if (download_speed == 0)
+    if (download_speed == 0) {
         return "0 B/s";
+    }
     return FormatBytes(download_speed) + "/s";
 }
 
@@ -44,7 +47,6 @@ std::string TorrentTask::GetFormattedProgress() const {
 
 std::string TorrentTask::GetStatusString() const {
     switch (status) {
-        default:
         case TorrentStatus::kNoTorrent:
             return "No Torrent";
         case TorrentStatus::kLoading:
@@ -59,6 +61,8 @@ std::string TorrentTask::GetStatusString() const {
             return "Error";
         case TorrentStatus::kConnected:
             return "Connecting";
+        default:
+            return "Unknown";
     }
 }
 
@@ -69,14 +73,14 @@ std::string TorrentTask::GetPeersString() const {
 }
 
 void TorrentTask::UpdateFromPieceStorage(const PieceStorage& storage, 
-                                        size_t defaultPieceLength) {
+                                         size_t default_piece_length) {
     total_pieces_count = storage.TotalPiecesCount();
     downloaded_pieces_count = storage.PiecesSavedToDiscCount();
     missing_pieces = storage.GetMissingPieces();
     
     if (total_pieces_count > 0) {
         progress = (static_cast<double>(downloaded_pieces_count) / total_pieces_count) * 100.0;
-        downloaded = downloaded_pieces_count * defaultPieceLength;
+        downloaded = downloaded_pieces_count * default_piece_length;
         
         if (downloaded > total_size && total_size > 0) {
             downloaded = total_size;

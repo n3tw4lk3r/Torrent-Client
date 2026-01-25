@@ -1,23 +1,25 @@
-#include "ui/TorrentUI.hpp"
-#include <ftxui/dom/elements.hpp>
+#include "ui/TorrentUi.hpp"
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/dom/elements.hpp>
 
 using namespace std::chrono_literals;
 
-TorrentUI::TorrentUI(std::unique_ptr<TorrentClient> client)
-    : client_(std::move(client)) {
-    main_component_ = BuildUI();
+TorrentUi::TorrentUi(std::unique_ptr<TorrentClient> client) :
+    client_(std::move(client))
+{
+    main_component_ = BuildUi();
 }
 
-TorrentUI::~TorrentUI() {
+TorrentUi::~TorrentUi() {
     running_ = false;
     if (update_thread_.joinable()) {
         update_thread_.join();
     }
 }
 
-ftxui::Component TorrentUI::BuildUI() {
+ftxui::Component TorrentUi::BuildUi() {
     using namespace ftxui;
     
     auto renderer = Renderer([this] {
@@ -36,7 +38,7 @@ ftxui::Component TorrentUI::BuildUI() {
     return component;
 }
 
-ftxui::Element TorrentUI::Render() {
+ftxui::Element TorrentUi::Render() {
     using namespace ftxui;
     
     auto task = client_->GetCurrentTask();
@@ -99,12 +101,12 @@ ftxui::Element TorrentUI::Render() {
     if (task.total_pieces_count > 0 && task.status == TorrentStatus::kDownloading) {
         task_info.push_back(text(""));
         
-        int bar_width = 50;
-        int filled = static_cast<int>((task.progress / 100.0) * bar_width);
+        const int kBarWidth = 50;
+        int filled = static_cast<int>((task.progress / 100.0) * kBarWidth);
         int percentage = static_cast<int>(task.progress);
         
         std::string progress_bar;
-        for (int i = 0; i < bar_width; i++) {
+        for (int i = 0; i < kBarWidth; ++i) {
             if (i < filled) {
                 progress_bar += "#";
             } else {
@@ -128,7 +130,6 @@ ftxui::Element TorrentUI::Render() {
         });
         
         task_info.push_back(progress_element);
-        
     }
     
     auto info_panel = window(
@@ -191,7 +192,7 @@ ftxui::Element TorrentUI::Render() {
     });
 }
 
-void TorrentUI::Run() {
+void TorrentUi::Run() {
     using namespace ftxui;
     
     auto screen = ScreenInteractive::Fullscreen();

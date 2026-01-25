@@ -19,10 +19,10 @@ enum class MessageId : uint8_t {
 
 struct Message {
     MessageId id;
-    size_t messageLength;
+    size_t message_length;
     std::string payload;
 
-    static Message Parse(const std::string& messageString);
+    static Message Parse(const std::string& message_string);
     static Message Init(MessageId id, const std::string& payload);
     std::string ToString() const;
 };

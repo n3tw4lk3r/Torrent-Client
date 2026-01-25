@@ -1,30 +1,18 @@
 #pragma once
 
-#include "net/Peer.hpp"
-#include "core/TorrentFile.hpp"
-#include "core/PieceStorage.hpp"
-#include "net/TcpConnect.hpp"
 #include <atomic>
 
-class PeerPiecesAvailability {
+#include "core/PieceStorage.hpp"
+#include "core/TorrentFile.hpp"
+#include "net/Peer.hpp"
+#include "net/TcpConnection.hpp"
+
+class PeerConnection {
 public:
-    PeerPiecesAvailability() = default;
-    PeerPiecesAvailability(std::string bitfield, size_t size);
-
-    bool IsPieceAvailable(size_t piece_index) const;
-    void SetPieceAvailability(size_t pieceIndex);
-
-private:
-    std::string bitfield;
-    size_t size = 0;
-};
-
-class PeerConnect {
-public:
-    PeerConnect(const Peer& peer,
-                const TorrentFile& torrent_file,
-                std::string self_peer_id,
-                PieceStorage& piece_storage);
+    PeerConnection(const Peer& peer,
+                   const TorrentFile& torrent_file,
+                   std::string self_peer_id,
+                   PieceStorage& piece_storage);
 
     void Run();
     void Terminate();
@@ -33,6 +21,19 @@ public:
     bool Failed() const;
 
 private:
+    class PeerPiecesAvailability {
+    public:
+        PeerPiecesAvailability() = default;
+        PeerPiecesAvailability(std::string bitfield, size_t size);
+
+        bool IsPieceAvailable(size_t piece_index) const;
+        void SetPieceAvailability(size_t piece_index);
+
+    private:
+        std::string bitfield;
+        size_t size = 0;
+    };
+
     bool EstablishConnection();
     void PerformHandshake();
     void ReceiveBitfield();
@@ -44,14 +45,14 @@ private:
     PiecePtr GetNextAvailablePiece();
 
     TorrentFile torrent_file;
-    TcpConnect socket;
+    TcpConnection socket;
     std::string self_peer_id;
     std::string peer_id;
 
     PeerPiecesAvailability pieces_availability;
     PieceStorage& piece_storage;
 
-    PiecePtr piece_is_in_progress;
+    PiecePtr piece_in_progress;
     bool block_is_pending = false;
     bool is_choked = true;
     std::atomic<bool> is_terminated = false;

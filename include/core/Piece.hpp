@@ -1,24 +1,10 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 
-constexpr size_t kBlockSize = 1 << 14; // 16KB
-
-struct Block {
-    enum Status {
-        kMissing = 0,
-        kPending,
-        kRetrieved,
-    };
-
-    size_t piece;
-    size_t offset;
-    size_t length;
-    Status status;
-    std::string data;
-};
+#include "Block.hpp"
 
 class Piece {
 public:
@@ -31,7 +17,7 @@ public:
     bool AllBlocksRetrieved() const;
     std::string GetData() const;
     std::string GetDataHash() const;
-    const std::string& GetHash() const;
+    std::string GetHash() const;
     void Reset();
 
     bool IsDownloading() const;

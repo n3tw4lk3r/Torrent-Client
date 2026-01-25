@@ -1,33 +1,40 @@
-#include "net/PeerConnect.hpp"
+#include "net/PeerConnection.hpp"
+
+#include <thread>
+
 #include "net/Message.hpp"
 #include "utils/byte_tools.hpp"
-#include <thread>
 
 using namespace std::chrono_literals;
 
-PeerPiecesAvailability::PeerPiecesAvailability(std::string bitfield, size_t size)
-    : bitfield(std::move(bitfield)), size(size) {}
+PeerConnection::PeerPiecesAvailability::PeerPiecesAvailability(std::string bitfield, size_t size) :
+    bitfield(std::move(bitfield)),
+    size(size)
+{}
 
-bool PeerPiecesAvailability::IsPieceAvailable(size_t index) const {
-    if (index >= size * 8) return false;
+bool PeerConnection::PeerPiecesAvailability::IsPieceAvailable(size_t index) const {
+    if (index >= size * 8) {
+        return false;
+    }
     return (bitfield[index >> 3] >> (7 - (index & 7))) & 1;
 }
 
-void PeerPiecesAvailability::SetPieceAvailability(size_t index) {
-    if (index < size * 8)
+void PeerConnection::PeerPiecesAvailability::SetPieceAvailability(size_t index) {
+    if (index < size * 8) {
         bitfield[index >> 3] |= (1 << (7 - (index & 7)));
+    }
 }
 
-PeerConnect::PeerConnect(const Peer& peer,
-                         const TorrentFile& torrent_file,
-                         std::string self_peer_id,
-                         PieceStorage& piece_storage)
+PeerConnection::PeerConnection(const Peer& peer,
+                               const TorrentFile& torrent_file,
+                               std::string self_peer_id,
+                               PieceStorage& piece_storage)
     : torrent_file(torrent_file),
       socket(peer.ip, peer.port, 3500ms, 3500ms),
       self_peer_id(std::move(self_peer_id)),
       piece_storage(piece_storage) {}
 
-void PeerConnect::Run() {
+void PeerConnection::Run() {
     int failures = 0;
 
     while (!is_terminated && failures < 10) {
@@ -47,7 +54,7 @@ void PeerConnect::Run() {
     Terminate();
 }
 
-bool PeerConnect::EstablishConnection() {
+bool PeerConnection::EstablishConnection() {
     socket.EstablishConnection();
     PerformHandshake();
     ReceiveBitfield();
@@ -55,7 +62,7 @@ bool PeerConnect::EstablishConnection() {
     return true;
 }
 
-void PeerConnect::PerformHandshake() {
+void PeerConnection::PerformHandshake() {
     std::string msg;
     msg += char(19);
     msg += "BitTorrent protocol";
@@ -68,9 +75,11 @@ void PeerConnect::PerformHandshake() {
     peer_id = resp.substr(48, 20);
 }
 
-void PeerConnect::ReceiveBitfield() {
+void PeerConnection::ReceiveBitfield() {
     auto data = socket.ReceiveData();
-    if (data.size() < 5) return;
+    if (data.size() < 5) {
+        return;
+    }
 
     if (data[4] == static_cast<char>(MessageId::kBitField)) {
         auto bf = data.substr(5);
@@ -80,22 +89,23 @@ void PeerConnect::ReceiveBitfield() {
     }
 }
 
-void PeerConnect::SendInterested() {
+void PeerConnection::SendInterested() {
     socket.SendData(Message::Init(MessageId::kInterested, "").ToString());
 }
 
-void PeerConnect::MainLoop() {
+void PeerConnection::MainLoop() {
     while (!is_terminated) {
-        if (!piece_is_in_progress)
-            piece_is_in_progress = GetNextAvailablePiece();
+        if (!piece_in_progress) {
+            piece_in_progress = GetNextAvailablePiece();
+        }
 
-        if (!piece_is_in_progress) {
+        if (!piece_in_progress) {
             std::this_thread::sleep_for(50ms);
             continue;
         }
         
         if (!is_choked && !block_is_pending) {
-            auto block = piece_is_in_progress->GetFirstMissingBlock();
+            auto block = piece_in_progress->GetFirstMissingBlock();
             if (block) {
                 RequestPiece(block);
                 block_is_pending = true;
@@ -103,75 +113,80 @@ void PeerConnect::MainLoop() {
         }
 
         auto msg = socket.ReceiveData();
-        if (!msg.empty())
+        if (!msg.empty()) {
             ProcessMessage(msg);
+        }
     }
 }
 
-PiecePtr PeerConnect::GetNextAvailablePiece() {
+PiecePtr PeerConnection::GetNextAvailablePiece() {
     while (!is_terminated) {
         auto piece = piece_storage.GetNextPieceToDownload();
-        if (!piece) return nullptr;
+        if (!piece) {
+            return nullptr;
+        }
 
-        if (pieces_availability.IsPieceAvailable(piece->GetIndex()))
+        if (pieces_availability.IsPieceAvailable(piece->GetIndex())) {
             return piece;
+        }
 
         piece_storage.Enqueue(piece);
     }
     return nullptr;
 }
 
-void PeerConnect::ProcessMessage(const std::string& data) {
+void PeerConnection::ProcessMessage(const std::string& data) {
     auto msg = Message::Parse(data);
 
-    if (msg.id == MessageId::kUnchoke)
+    if (msg.id == MessageId::kUnchoke) {
         is_choked = false;
+    }
 
     if (msg.id == MessageId::kPiece) {
-        size_t index = utils::BytesToInt(msg.payload.substr(0, 4));
-        size_t offset = utils::BytesToInt(msg.payload.substr(4, 4));
+        size_t index = utils::BytesToInt32(msg.payload.substr(0, 4));
+        size_t offset = utils::BytesToInt32(msg.payload.substr(4, 4));
         auto block = msg.payload.substr(8);
 
-        if (piece_is_in_progress && piece_is_in_progress->GetIndex() == index) {
-            piece_is_in_progress->SaveBlock(offset, block);
+        if (piece_in_progress && piece_in_progress->GetIndex() == index) {
+            piece_in_progress->SaveBlock(offset, block);
             block_is_pending = false;
 
-            if (piece_is_in_progress->AllBlocksRetrieved()) {
-                piece_storage.PieceProcessed(piece_is_in_progress);
-                piece_is_in_progress.reset();
+            if (piece_in_progress->AllBlocksRetrieved()) {
+                piece_storage.PieceProcessed(piece_in_progress);
+                piece_in_progress.reset();
             }
         }
     }
 }
 
-void PeerConnect::RequestPiece(const Block* block) {
+void PeerConnection::RequestPiece(const Block* block) {
     std::string payload;
-    payload += utils::IntToBytes(block->piece);
-    payload += utils::IntToBytes(block->offset);
-    payload += utils::IntToBytes(block->length);
+    payload += utils::Int32ToBytes(block->piece);
+    payload += utils::Int32ToBytes(block->offset);
+    payload += utils::Int32ToBytes(block->length);
     socket.SendData(Message::Init(MessageId::kRequest, payload).ToString());
 }
 
-void PeerConnect::HandleConnectionError() {
-    if (piece_is_in_progress) {
-        piece_storage.Enqueue(piece_is_in_progress);
-        piece_is_in_progress.reset();
+void PeerConnection::HandleConnectionError() {
+    if (piece_in_progress) {
+        piece_storage.Enqueue(piece_in_progress);
+        piece_in_progress.reset();
     }
 }
 
-void PeerConnect::Terminate() {
+void PeerConnection::Terminate() {
     is_terminated = true;
     socket.CloseConnection();
 }
 
-bool PeerConnect::IsTerminated() const {
+bool PeerConnection::IsTerminated() const {
     return is_terminated;
 }
 
-std::string PeerConnect::GetPeerId() const {
+std::string PeerConnection::GetPeerId() const {
     return peer_id;
 }
 
-bool PeerConnect::Failed() const {
+bool PeerConnection::Failed() const {
     return has_failed;
 }

@@ -1,18 +1,22 @@
 #include "core/PieceStorage.hpp"
+
 #include <algorithm>
 #include <stdexcept>
 
 PieceStorage::PieceStorage(const TorrentFile& torrent_file,
-                           const std::filesystem::path& output_directory)
-    : output_directory(output_directory),
+                           const std::filesystem::path& output_directory) :
+      output_directory(output_directory),
       default_piece_length(torrent_file.piece_length),
       total_piece_count(torrent_file.piece_hashes.size()),
-      torrent_file(torrent_file) {
-
+      torrent_file(torrent_file)
+{
     for (size_t i = 0; i < total_piece_count; ++i) {
-        size_t len = (i + 1 == total_piece_count)
-            ? (torrent_file.length - i * torrent_file.piece_length)
-            : torrent_file.piece_length;
+        size_t len;
+        if (i + 1 == total_piece_count) {
+            len = torrent_file.length - i * torrent_file.piece_length;
+        } else {
+            len = torrent_file.piece_length;
+        }
 
         remaining_pieces_queue.push(
             std::make_shared<Piece>(i, len, torrent_file.piece_hashes[i])
@@ -37,8 +41,9 @@ void PieceStorage::InitializeOutputFile() {
 
 PiecePtr PieceStorage::GetNextPieceToDownload() {
     std::lock_guard<std::mutex> lock(queue_mutex);
-    if (remaining_pieces_queue.empty())
+    if (remaining_pieces_queue.empty()) {
         return nullptr;
+    }
 
     auto piece = remaining_pieces_queue.front();
     remaining_pieces_queue.pop();
@@ -46,11 +51,13 @@ PiecePtr PieceStorage::GetNextPieceToDownload() {
 }
 
 void PieceStorage::Enqueue(const PiecePtr& piece) {
-    if (!piece)
+    if (!piece) {
         return;
+    }
 
-    if (IsPieceAlreadySaved(piece->GetIndex()))
+    if (IsPieceAlreadySaved(piece->GetIndex())) {
         return;
+    }
 
     piece->Reset();
     std::lock_guard<std::mutex> lock(queue_mutex);
@@ -58,8 +65,9 @@ void PieceStorage::Enqueue(const PiecePtr& piece) {
 }
 
 void PieceStorage::PieceProcessed(const PiecePtr& piece) {
-    if (!piece || !piece->HashMatches())
+    if (!piece || !piece->HashMatches()) {
         return Enqueue(piece);
+    }
 
     SavePieceToDisk(piece);
 }
@@ -67,8 +75,9 @@ void PieceStorage::PieceProcessed(const PiecePtr& piece) {
 void PieceStorage::SavePieceToDisk(const PiecePtr& piece) {
     std::lock_guard<std::mutex> lock(file_mutex);
 
-    if (saved_pieces.contains(piece->GetIndex()))
+    if (saved_pieces.contains(piece->GetIndex())) {
         return;
+    }
 
     file.seekp(piece->GetIndex() * default_piece_length);
     const auto& data = piece->GetData();
@@ -111,8 +120,9 @@ std::vector<size_t> PieceStorage::GetMissingPieces() const {
     missing.reserve(total_piece_count - saved_pieces.size());
 
     for (size_t i = 0; i < total_piece_count; ++i) {
-        if (!saved_pieces.contains(i))
+        if (!saved_pieces.contains(i)) {
             missing.push_back(i);
+        }
     }
     return missing;
 }
@@ -125,12 +135,16 @@ void PieceStorage::ForceRequeueMissingPieces() {
     std::swap(remaining_pieces_queue, empty);
 
     for (size_t i = 0; i < total_piece_count; ++i) {
-        if (saved_pieces.contains(i))
+        if (saved_pieces.contains(i)) {
             continue;
+        }
 
-        size_t len = (i + 1 == total_piece_count)
-            ? (torrent_file.length - i * torrent_file.piece_length)
-            : torrent_file.piece_length;
+        size_t len;
+        if (i + 1 == total_piece_count) {
+            len = torrent_file.length - i * torrent_file.piece_length;
+        } else {
+            len = torrent_file.piece_length;
+        }
 
         remaining_pieces_queue.push(
             std::make_shared<Piece>(i, len, torrent_file.piece_hashes[i])

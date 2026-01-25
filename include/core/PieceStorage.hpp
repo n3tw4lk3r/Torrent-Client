@@ -1,13 +1,14 @@
 #pragma once
 
-#include "core/Piece.hpp"
-#include "core/TorrentFile.hpp"
 #include <filesystem>
 #include <fstream>
-#include <queue>
 #include <mutex>
-#include <vector>
+#include <queue>
 #include <unordered_set>
+#include <vector>
+
+#include "core/Piece.hpp"
+#include "core/TorrentFile.hpp"
 
 class PieceStorage {
 public:

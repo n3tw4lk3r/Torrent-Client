@@ -1,8 +1,8 @@
-#include "core/TorrentClient.hpp"
-#include <iostream>
 #include <filesystem>
-#include <cstring>
+#include <iostream>
 #include <string>
+
+#include "core/TorrentClient.hpp"
 
 void PrintUsage(const char* program_name) {
     std::cout << "Usage: " << program_name << " -d <output_directory> <torrent_file>" << std::endl;
@@ -19,16 +19,14 @@ int main(int argc, char *argv[]) {
         std::string arg = argv[i];
 
         if (arg == "-d" && i + 1 < argc) {
-            output_directory = argv[++i];
-        }
-        else if (arg == "-h" || arg == "--help") {
+            ++i;
+            output_directory = argv[i];
+        } else if (arg == "-h" || arg == "--help") {
             PrintUsage(argv[0]);
             return 0;
-        }
-        else if (arg[0] != '-') {
+        } else if (arg[0] != '-') {
             torrent_file = arg;
-        }
-        else {
+        } else {
             std::cerr << "Unknown option: " << arg << std::endl;
             PrintUsage(argv[0]);
             return 1;

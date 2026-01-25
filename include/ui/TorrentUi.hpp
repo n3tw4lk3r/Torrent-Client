@@ -9,10 +9,10 @@
 
 #include "core/TorrentClient.hpp"
 
-class TorrentUI {
+class TorrentUi {
 public:
-    TorrentUI(std::unique_ptr<TorrentClient> client);
-    ~TorrentUI();
+    TorrentUi(std::unique_ptr<TorrentClient> client);
+    ~TorrentUi();
     
     void Run();
 
@@ -23,7 +23,6 @@ private:
     
     ftxui::Component main_component_;
     
-    void UpdateUI();
-    ftxui::Component BuildUI();
+    ftxui::Component BuildUi();
     ftxui::Element Render();
 };
