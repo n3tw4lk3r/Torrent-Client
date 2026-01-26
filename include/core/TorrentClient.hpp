@@ -14,6 +14,7 @@
 class TorrentClient {
 public:
     explicit TorrentClient(const std::string& peer_id = "TESTAPPDONTWORRY");
+    ~TorrentClient();
 
     void DownloadTorrent(const std::filesystem::path& torrent_file_path,
                          const std::filesystem::path& output_directory);
@@ -27,11 +28,15 @@ public:
     void ResumeDownload();
     bool IsDownloading() const;
     bool IsPaused() const;
+    
+    void RequestStop();
+    bool IsStopRequested() const;
 
 private:
     std::string peer_id;
     std::atomic<bool> is_terminated{false};
     std::atomic<bool> is_paused{false};
+    std::atomic<bool> stop_requested{false};
 
     mutable std::mutex task_mutex;
     TorrentTask current_task;
@@ -50,4 +55,5 @@ private:
                                 const HttpTracker& tracker);
     void DownloadFromTracker(const TorrentFile& torrent_file, 
                              PieceStorage& pieces);
+    void CleanupConnections();
 };

@@ -11,6 +11,7 @@ enum class TorrentStatus {
     kDownloading,
     kPaused,
     kCompleted,
+    kStopped,
     kError,
     kConnected
 };

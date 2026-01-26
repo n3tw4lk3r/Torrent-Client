@@ -1,11 +1,12 @@
 #include "ui/TorrentUi.hpp"
 
+#include <chrono>
+#include <iomanip>
+#include <sstream>
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
-#include <chrono>
-#include <sstream>
-#include <iomanip>
 
 using namespace std::chrono_literals;
 
@@ -103,6 +104,9 @@ ftxui::Element TorrentUi::Render() {
             break;
         case TorrentStatus::kError:
             status_color = Color::RedLight;
+            break;
+        case TorrentStatus::kStopped:
+            status_color = Color::YellowLight;
             break;
         default:
             status_color = Color::GrayLight;
