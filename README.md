@@ -100,7 +100,7 @@ The project is split into several logical modules, each responsible for a distin
 - **PeerConnection**  
   Manages communication with a single peer: handshake, bitfield exchange, piece requests, and message processing.
 
-- **TCPConnection**  
+- **TcpConnection**  
   Low-level abstraction over TCP sockets used for peer communication.
 
 - **UdpConnection**  
