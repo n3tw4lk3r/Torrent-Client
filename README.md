@@ -121,9 +121,9 @@ The project is split into several logical modules, each responsible for a distin
 - No magnet link support
 
 ## Planned Features and Fixes:
+
 ### Near Future
-- Proper shutdown when pressing Q in TUI
-- Fix duplicate "download finished" log messages
+- Calculate and display download speed
 
 ### Someday
 - Multi-file torrent support
