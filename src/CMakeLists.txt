@@ -30,14 +30,6 @@ target_link_libraries(core PUBLIC
     cpr::cpr
 )
 
-add_executable(simple-torrent-console
-    main.cpp
-)
-
-target_link_libraries(simple-torrent-console
-    core
-)
-
 add_executable(simple-torrent-tui
     main_tui.cpp
     ui/TorrentUi.cpp
@@ -53,6 +45,6 @@ target_link_libraries(simple-torrent-tui
     ftxui::component
 )
 
-install(TARGETS simple-torrent-console simple-torrent-tui
+install(TARGETS simple-torrent-tui
     DESTINATION bin
 )
