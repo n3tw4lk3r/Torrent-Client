@@ -69,7 +69,9 @@ bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
     std::vector<std::thread> peer_threads;
 
     for (const Peer& peer : tracker.GetPeers()) {
-        if (stop_requested) break;
+        if (stop_requested) {
+            break;
+        }
         try {
             auto connection = std::make_shared<PeerConnection>(peer, torrent_file, peer_id, pieces);
             peer_connections.emplace_back(connection);
@@ -93,7 +95,9 @@ bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
 
     peer_threads.reserve(peer_connections.size());
     for (auto& peer_connection_ptr : peer_connections) {
-        if (stop_requested) break;
+        if (stop_requested) {
+            break;
+        }
         peer_threads.emplace_back([peer_connection_ptr]() {
             while (!peer_connection_ptr->IsTerminated()) {
                 try {
