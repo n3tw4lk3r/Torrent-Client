@@ -244,10 +244,8 @@ void TorrentClient::DownloadFromTracker(const TorrentFile& torrent_file, PieceSt
     
     if (pieces.IsDownloadComplete()) {
         UpdateTaskStatus(TorrentStatus::kCompleted);
-        AddLogMessage("Download completed successfully!");
     } else {
         UpdateTaskStatus(TorrentStatus::kError);
-        AddLogMessage("Download incomplete");
     }
 }
 
@@ -295,12 +293,6 @@ void TorrentClient::DownloadTorrent(const std::filesystem::path& torrent_file_pa
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
     
     AddLogMessage("Download finished in " + std::to_string(duration.count()) + " seconds");
-    
-    if (pieces.IsDownloadComplete()) {
-        AddLogMessage("Download completed successfully!");
-    } else {
-        AddLogMessage("Download incomplete!");
-    }
 }
 
 void TorrentClient::AddLogMessage(const std::string& message) {
