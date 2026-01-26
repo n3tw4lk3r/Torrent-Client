@@ -111,7 +111,7 @@ void PeerConnection::MainLoop() {
                 break;
             }
 
-            if (inflight_offsets.count(block->offset)) {
+            if (inflight_offsets.contains(block->offset)) {
                 break;
             }
 
