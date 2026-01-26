@@ -183,10 +183,11 @@ void TorrentClient::DownloadFromTracker(const TorrentFile& torrent_file, PieceSt
         for (size_t i = 0; i < trackers.size() && !is_terminated; ++i) {
             try {
                 HttpTracker tracker(trackers[i]);
+                AddLogMessage("Requesting peers from " + trackers[i] + "...");
                 tracker.UpdatePeers(torrent_file, peer_id, 12345);
                 const auto& peers = tracker.GetPeers();
                 all_peers.insert(all_peers.end(), peers.begin(), peers.end());
-                AddLogMessage(trackers[i] + " - " + std::to_string(peers.size()) + " peers");
+                AddLogMessage("Got " + std::to_string(peers.size()) + " peers from " + trackers[i] );
             } catch (const std::exception& e) {
                 AddLogMessage("Tracker " + trackers[i] + " error: " + e.what());
             }
