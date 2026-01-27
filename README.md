@@ -81,7 +81,7 @@ The project is split into several logical modules, each responsible for a distin
   Coordinates trackers, peer connections, piece storage, and overall torrent state.
 
 - **TorrentFile**  
-  Represents parsed `.torrent` metadata, including piece hashes, announce URLs, and file information.
+  Represents parsed .torrent metadata, including piece hashes, announce URLs, and file information.
 
 - **HttpTracker**  
   Handles communication with HTTP/TCP trackers.
@@ -112,7 +112,7 @@ The project is split into several logical modules, each responsible for a distin
   Encapsulates BitTorrent peer protocol messages and provides parsing and serialization logic.
 
 - **BencodeParser**  
-  Parses Bencode-encoded data from strings and `.torrent` files.
+  Parses Bencode-encoded data from strings and .torrent files.
 
 ## Limitations
 - Supports only single-file torrents (no multi-file/directory structure)
