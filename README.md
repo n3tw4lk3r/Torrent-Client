@@ -18,7 +18,7 @@ This project originally started as a university assignment and is now being refa
 
 ## Dependencies
 Required
-- C++17 compatible compiler
+- C++20 compatible compiler
 - CMake (3.14 or higher)
 - OpenSSL (for SHA-1 hashing)
 
