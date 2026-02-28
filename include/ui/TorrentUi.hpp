@@ -14,17 +14,17 @@ class TorrentUi {
 public:
     TorrentUi(std::unique_ptr<TorrentClient> client);
     ~TorrentUi();
-    
+
     void Run();
 
 private:
-    std::unique_ptr<TorrentClient> client_;
-    std::atomic<bool> running_{true};
-    std::thread update_thread_;
-    std::chrono::steady_clock::time_point start_time_;
-    
-    ftxui::Component main_component_;
-    
+    std::unique_ptr<TorrentClient> client;
+    std::atomic<bool> is_running {true};
+    std::thread update_thread;
+    std::chrono::steady_clock::time_point start_time;
+
+    ftxui::Component main_component;
+
     ftxui::Component BuildUi();
     ftxui::Element Render();
 };
