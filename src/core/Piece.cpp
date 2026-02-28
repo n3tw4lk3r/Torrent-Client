@@ -13,7 +13,7 @@ Piece::Piece(size_t index, size_t length, const std::string& hash) :
     size_t offset = 0;
     while (offset < length) {
         size_t block_length = std::min(Block::kSize, length - offset);
-        blocks.push_back(Block{index, offset, block_length, Block::kMissing, ""});
+        blocks.push_back(Block{index, offset, block_length, Block::Status::kMissing, ""});
         offset += block_length;
     }
 }
@@ -32,8 +32,8 @@ bool Piece::HashMatches() const {
 
 Block* Piece::GetFirstMissingBlock() {
     for (auto& block : blocks) {
-        if (block.status == Block::kMissing) {
-            block.status = Block::kPending;
+        if (block.status == Block::Status::kMissing) {
+            block.status = Block::Status::kPending;
             return &block;
         }
     }
@@ -47,13 +47,13 @@ size_t Piece::GetIndex() const {
 void Piece::SaveBlock(size_t block_offset, std::string block_data) {
     for (auto& block : blocks) {
         if (block.offset == block_offset) {
-            if (block.status != Block::kPending) {
+            if (block.status != Block::Status::kPending) {
                 throw std::runtime_error("Block at offset " + std::to_string(block_offset) +
                                          " is not in pending state");
             }
 
             block.data = std::move(block_data);
-            block.status = Block::kRetrieved;
+            block.status = Block::Status::kRetrieved;
             bytes_downloaded += block.data.size();
             return;
         }
@@ -63,7 +63,7 @@ void Piece::SaveBlock(size_t block_offset, std::string block_data) {
 
 bool Piece::AllBlocksRetrieved() const {
     return std::all_of(blocks.begin(), blocks.end(), [](const Block& block) {
-        return block.status == Block::kRetrieved;
+        return block.status == Block::Status::kRetrieved;
     });
 }
 
@@ -72,7 +72,7 @@ std::string Piece::GetData() const {
     result.reserve(length);
 
     for (const auto& block : blocks) {
-        if (block.status == Block::kRetrieved) {
+        if (block.status == Block::Status::kRetrieved) {
             result += block.data;
         } else {
             result.append(block.length, '\0');
@@ -93,14 +93,14 @@ std::string Piece::GetHash() const {
 void Piece::Reset() {
     bytes_downloaded = 0;
     for (auto& block : blocks) {
-        block.status = Block::kMissing;
+        block.status = Block::Status::kMissing;
         block.data.clear();
     }
 }
 
 bool Piece::IsDownloading() const {
     return std::any_of(blocks.begin(), blocks.end(), [](const Block& block) {
-        return block.status == Block::kPending;
+        return block.status == Block::Status::kPending;
     });
 }
 
