@@ -8,8 +8,8 @@
 HttpTracker::HttpTracker(const std::string& url) : tracker_url(url) {}
 
 void HttpTracker::UpdatePeers(const TorrentFile& torrent_file,
-                                 const std::string& peer_id,
-                                 int port) {
+                              const std::string& peer_id,
+                              int port) {
     std::vector<std::string> all_trackers = { tracker_url };
 
     if (IsUdpTracker()) {
