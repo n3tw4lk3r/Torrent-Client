@@ -2,8 +2,8 @@
 
 struct Block {
     static constexpr size_t kSize = 1 << 14; // 16KB
-    
-    enum Status {
+
+    enum class Status {
         kMissing = 0,
         kPending,
         kRetrieved,
