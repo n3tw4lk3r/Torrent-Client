@@ -29,7 +29,7 @@ ftxui::Component TorrentUi::BuildUi() {
         return Render();
     });
 
-    auto component = CatchEvent(renderer, [this](Event event) {
+    auto component = CatchEvent(renderer, [](Event event) {
         if (event == Event::Character('q') || event == Event::Character('Q') ||
             event == Event::Escape) {
             return false;
