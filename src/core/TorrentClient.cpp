@@ -7,7 +7,6 @@
 
 #include "net/PeerConnection.hpp"
 
-using namespace std::chrono_literals;
 
 TorrentClient::TorrentClient(const std::string& peer_id) :
     peer_id(peer_id + GenerateRandomSuffix())
@@ -37,19 +36,19 @@ void TorrentClient::RequestStop() {
     stop_requested = true;
     is_terminated = true;
     is_paused = false;
-    
+
     for (auto& peer_connection_ptr : peer_connections) {
         if (peer_connection_ptr) {
             peer_connection_ptr->Terminate();
         }
     }
-    
+
     {
         std::lock_guard<std::mutex> lock(task_mutex);
         current_task.status = TorrentStatus::kStopped;
         current_task.last_update = std::chrono::system_clock::now();
     }
-    
+
     AddLogMessage("Download stopped by user (Q pressed)");
 }
 
@@ -60,12 +59,14 @@ bool TorrentClient::IsStopRequested() const {
 bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
                                            const TorrentFile& torrent_file,
                                            const HttpTracker& tracker) {
+
+    using namespace std::chrono_literals;
     UpdateTaskStatus(TorrentStatus::kDownloading);
     UpdateTaskFromTracker(tracker);
     AddLogMessage("Starting download with " + std::to_string(tracker.GetPeers().size()) + " peers");
-    
+
     peer_connections.clear();
-    
+
     std::vector<std::thread> peer_threads;
 
     for (const Peer& peer : tracker.GetPeers()) {
@@ -76,7 +77,7 @@ bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
             auto connection = std::make_shared<PeerConnection>(peer, torrent_file, peer_id, pieces);
             peer_connections.emplace_back(connection);
         } catch (const std::exception& e) {
-            std::string error_msg = "Failed to connect to " + peer.ip + ":" + 
+            std::string error_msg = "Failed to connect to " + peer.ip + ":" +
                                    std::to_string(peer.port) + " - " + e.what();
             AddLogMessage(error_msg);
         }
@@ -127,31 +128,31 @@ bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
     AddLogMessage("Started " + std::to_string(peer_threads.size()) + " peer threads");
 
     const size_t target_pieces = pieces.TotalPiecesCount();
-    
+
     {
         std::lock_guard<std::mutex> lock(task_mutex);
         current_task.total_pieces_count = target_pieces;
         current_task.total_size = torrent_file.length;
     }
-    
+
     AddLogMessage("Downloading " + std::to_string(target_pieces) + " pieces");
 
     bool endgame_mode = false;
     auto last_requeue_time = std::chrono::steady_clock::now();
     const auto requeue_interval = std::chrono::seconds(10);
     auto last_status_update = std::chrono::steady_clock::now();
-    
+
     while (!stop_requested && !is_terminated && !pieces.IsDownloadComplete()) {
         if (stop_requested) {
             break;
         }
-        
+
         auto now = std::chrono::steady_clock::now();
         if (now - last_status_update > 250ms) {
             UpdateTaskFromPieceStorage(pieces);
             last_status_update = now;
         }
-        
+
         if (is_paused) {
             std::this_thread::sleep_for(50ms);
             continue;
@@ -180,7 +181,7 @@ bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
     }
 
     UpdateTaskFromPieceStorage(pieces);
-    
+
     if (stop_requested) {
         AddLogMessage("Download stopped by user");
         UpdateTaskStatus(TorrentStatus::kStopped);
@@ -208,9 +209,10 @@ bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
 }
 
 void TorrentClient::DownloadFromTracker(const TorrentFile& torrent_file, PieceStorage& pieces) {
+    using namespace std::chrono_literals;
     UpdateTaskStatus(TorrentStatus::kConnected);
     AddLogMessage("Connecting to trackers...");
-    
+
     std::vector<std::string> trackers = {
         torrent_file.announce,
         "udp://tracker.opentrackr.org:1337/announce",
@@ -232,12 +234,12 @@ void TorrentClient::DownloadFromTracker(const TorrentFile& torrent_file, PieceSt
         if (stop_requested) {
             break;
         }
-        
+
         if (std::chrono::steady_clock::now() - last_tracker_update > 250ms) {
             UpdateTaskFromPieceStorage(pieces);
             last_tracker_update = std::chrono::steady_clock::now();
         }
-        
+
         if (is_paused) {
             std::this_thread::sleep_for(50ms);
             continue;
@@ -310,8 +312,8 @@ void TorrentClient::DownloadFromTracker(const TorrentFile& torrent_file, PieceSt
                 break;
             }
 
-            AddLogMessage("Retry " + std::to_string(retry_count) + "/" + 
-                         std::to_string(max_retries) + " - " + 
+            AddLogMessage("Retry " + std::to_string(retry_count) + "/" +
+                         std::to_string(max_retries) + " - " +
                          std::to_string(pieces.GetMissingPieces().size()) + " pieces remaining");
             for (int i = 0; i < 150 && !stop_requested; ++i) {
                 std::this_thread::sleep_for(100ms);
@@ -320,7 +322,7 @@ void TorrentClient::DownloadFromTracker(const TorrentFile& torrent_file, PieceSt
     }
 
     UpdateTaskFromPieceStorage(pieces);
-    
+
     if (stop_requested) {
         UpdateTaskStatus(TorrentStatus::kStopped);
         AddLogMessage("Download stopped by user");
@@ -353,41 +355,41 @@ void TorrentClient::DownloadTorrent(const std::filesystem::path& torrent_file_pa
         current_task.start_time = std::chrono::system_clock::now();
         current_task.last_update = std::chrono::system_clock::now();
     }
-    
-    AddLogMessage("File: " + torrent_file.name + " (" + 
+
+    AddLogMessage("File: " + torrent_file.name + " (" +
                   std::to_string(torrent_file.length) + " bytes, " +
                   std::to_string(torrent_file.piece_hashes.size()) + " pieces)");
 
     PieceStorage pieces(torrent_file, output_directory);
 
     auto start_time = std::chrono::steady_clock::now();
-    
+
     try {
         DownloadFromTracker(torrent_file, pieces);
     } catch (const std::exception& e) {
         UpdateTaskStatus(TorrentStatus::kError);
         AddLogMessage("Download error: " + std::string(e.what()));
     }
-    
+
     auto end_time = std::chrono::steady_clock::now();
 
     pieces.CloseOutputFile();
 
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
-    
+
     AddLogMessage("Download finished in " + std::to_string(duration.count()) + " seconds");
 }
 
 void TorrentClient::AddLogMessage(const std::string& message) {
     std::lock_guard<std::mutex> lock(log_mutex);
-    
+
     auto now = std::chrono::system_clock::now();
     auto time = std::chrono::system_clock::to_time_t(now);
     char time_string[20];
     std::strftime(time_string, sizeof(time_string), "[%H:%M:%S]", std::localtime(&time));
-    
+
     log_messages.push_back(std::string(time_string) + " " + message);
-    
+
     if (log_messages.size() > 1000) {
         log_messages.erase(log_messages.begin(), log_messages.begin() + 500);
     }
@@ -400,11 +402,11 @@ TorrentTask TorrentClient::GetCurrentTask() const {
 
 std::vector<std::string> TorrentClient::GetLogMessages(size_t max_count) const {
     std::lock_guard<std::mutex> lock(log_mutex);
-    
+
     if (log_messages.size() <= max_count) {
         return log_messages;
     }
-    
+
     return std::vector<std::string>(
         log_messages.end() - max_count,
         log_messages.end()
