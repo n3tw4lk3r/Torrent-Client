@@ -8,8 +8,6 @@
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
 
-using namespace std::chrono_literals;
-
 TorrentUi::TorrentUi(std::unique_ptr<TorrentClient> client) :
     client(std::move(client))
 {
@@ -242,6 +240,7 @@ ftxui::Element TorrentUi::Render() {
 }
 
 void TorrentUi::Run() {
+    using namespace std::chrono_literals;
     using namespace ftxui;
 
     auto screen = ScreenInteractive::Fullscreen();
