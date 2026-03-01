@@ -4,8 +4,6 @@
 
 #include "utils/byte_tools.hpp"
 
-using namespace std::chrono_literals;
-
 TcpConnection::TcpConnection(std::string ip, int port,
                              std::chrono::milliseconds connect_timeout,
                              std::chrono::milliseconds read_timeout) :
@@ -175,7 +173,7 @@ std::string TcpConnection::ReceiveData(size_t buffer_size) const {
         static constexpr size_t kBufferSize = 64 * 1024;
         char buffer[kBufferSize];
         int read_size = std::min(static_cast<int>(kBufferSize), to_read);
-        
+
         int received = recv(socket_fd, buffer, read_size, 0);
         if (received <= 0) {
             if (!force_close.load()) {
@@ -183,7 +181,7 @@ std::string TcpConnection::ReceiveData(size_t buffer_size) const {
             }
             throw std::runtime_error("Connection terminated");
         }
-        
+
         message.append(buffer, received);
         to_read -= received;
     }
