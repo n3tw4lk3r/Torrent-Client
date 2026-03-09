@@ -88,7 +88,7 @@ ftxui::Element TorrentUi::Render() {
 
     auto header = hbox({
         text(" TORRENT CLIENT ") | bold | inverted | center
-    }) | center | border;
+    }) | center;
 
     Color status_color = Color::GrayLight;
 
@@ -227,6 +227,7 @@ ftxui::Element TorrentUi::Render() {
 
     return vbox({
         header,
+        separator(),
         info_panel,
         text("") | size(HEIGHT, EQUAL, 1),
         log_panel | flex,
