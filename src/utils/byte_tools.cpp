@@ -37,14 +37,18 @@ std::string utils::CalculateSha1(std::string_view msg) {
 }
 
 std::string utils::HexEncode(std::string_view input) {
-    std::stringstream ss;
-    ss << std::hex << std::setfill('0');
+    static constexpr char hex_table[] = "0123456789abcdef";
 
-    for (unsigned char c : input) {
-        ss << std::setw(2) << static_cast<int>(c);
+    std::string result;
+    result.resize(input.size() * 2);
+
+    for (size_t i = 0; i < input.size(); ++i) {
+        unsigned char c = static_cast<unsigned char>(input[i]);
+        result[(i << 1)] = hex_table[c >> 4];
+        result[(i << 1) | 1] = hex_table[c & 0x0F];
     }
 
-    return ss.str();
+    return result;
 }
 
 std::string utils::Int64ToBytes(uint64_t value) {
@@ -71,12 +75,5 @@ uint64_t utils::BytesToInt64(std::string_view bytes) {
 }
 
 std::string utils::BytesToHex(std::string_view bytes) {
-    std::stringstream ss;
-    ss << std::hex << std::setfill('0');
-
-    for (unsigned char c : bytes) {
-        ss << std::setw(2) << static_cast<int>(c);
-    }
-
-    return ss.str();
+    return HexEncode(bytes);
 }
