@@ -161,7 +161,7 @@ bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
 
         size_t missing_count = pieces.GetMissingPieces().size();
 
-        if (!endgame_mode && missing_count <= kLeftPiecesToEnterEndgame) {
+        if (!endgame_mode && missing_count <= kPiecesLeftToEnterEndgame) {
             endgame_mode = true;
             AddLogMessage("Entering endgame mode - " + std::to_string(missing_count) + " pieces remaining");
         }
