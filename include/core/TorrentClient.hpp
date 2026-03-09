@@ -10,6 +10,7 @@
 #include "core/TorrentFile.hpp"
 #include "core/TorrentTask.hpp"
 #include "net/PeerConnection.hpp"
+#include "utils/Timer.hpp"
 
 class TorrentClient {
 public:
@@ -28,7 +29,7 @@ public:
     void ResumeDownload();
     bool IsDownloading() const;
     bool IsPaused() const;
-    
+    std::chrono::seconds ElapsedTime() const;
     void RequestStop();
     bool IsStopRequested() const;
 
@@ -43,6 +44,7 @@ private:
     mutable std::mutex log_mutex;
     std::vector<std::string> log_messages;
     std::vector<std::shared_ptr<PeerConnection>> peer_connections;
+    Timer timer;
 
     void AddLogMessage(const std::string& message);
     void UpdateTaskStatus(TorrentStatus status);
@@ -50,10 +52,10 @@ private:
     void UpdateTaskFromTracker(const HttpTracker& tracker);
 
     std::string GenerateRandomSuffix(size_t length = 4);
-    bool RunDownloadMultithread(PieceStorage& pieces, 
+    bool RunDownloadMultithread(PieceStorage& pieces,
                                 const TorrentFile& torrent_file,
                                 const HttpTracker& tracker);
-    void DownloadFromTracker(const TorrentFile& torrent_file, 
+    void DownloadFromTracker(const TorrentFile& torrent_file,
                              PieceStorage& pieces);
     void CleanupConnections();
 };

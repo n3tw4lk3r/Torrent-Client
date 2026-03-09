@@ -12,6 +12,7 @@ add_library(core STATIC
     net/UdpConnection.cpp
     utils/BencodeParser.cpp
     utils/byte_tools.cpp
+    utils/Timer.cpp
 )
 
 target_include_directories(core PRIVATE

@@ -12,6 +12,7 @@ TorrentClient::TorrentClient(const std::string& peer_id) :
     peer_id(peer_id + GenerateRandomSuffix())
 {
     current_task.start_time = std::chrono::system_clock::now();
+    timer.Start();
     AddLogMessage("Torrent client initialized");
 }
 
@@ -194,7 +195,7 @@ bool TorrentClient::RunDownloadMultithread(PieceStorage& pieces,
     }
 
     is_terminated = true;
-
+    timer.Stop();
     for (auto& peer_connection_ptr : peer_connections) {
         peer_connection_ptr->Terminate();
     }
@@ -463,4 +464,9 @@ bool TorrentClient::IsDownloading() const {
 
 bool TorrentClient::IsPaused() const {
     return is_paused;
+}
+
+std::chrono::seconds TorrentClient::ElapsedTime() const {
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(timer.Elapsed());
+    return elapsed;
 }

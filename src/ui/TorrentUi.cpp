@@ -12,7 +12,6 @@ TorrentUi::TorrentUi(std::unique_ptr<TorrentClient> client) :
     client(std::move(client))
 {
     main_component = BuildUi();
-    start_time = std::chrono::steady_clock::now();
 }
 
 TorrentUi::~TorrentUi() {
@@ -154,8 +153,7 @@ ftxui::Element TorrentUi::Render() {
         filler()
     }));
 
-    auto now = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - start_time);
+    auto elapsed = client->ElapsedTime();
     task_info.push_back(hbox({
         filler(),
         text("Time elapsed: ") | bold,
