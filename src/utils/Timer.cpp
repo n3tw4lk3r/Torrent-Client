@@ -65,9 +65,11 @@ void Timer::Reset() {
 }
 
 std::chrono::nanoseconds Timer::Elapsed() const {
-    std::lock_guard<std::mutex> lock(mutex);
+    if (!is_running.load()) {
+        return elapsed_time;
+    }
 
-    if (!is_running || is_paused) {
+    if (is_paused.load()) {
         return elapsed_time;
     }
 
