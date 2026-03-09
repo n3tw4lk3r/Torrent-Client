@@ -1,7 +1,6 @@
 #include "utils/byte_tools.hpp"
 
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 #include <stdexcept>
 
@@ -27,20 +26,24 @@ std::string utils::Int32ToBytes(int value) {
     return result;
 }
 
-std::string utils::CalculateSha1(const std::string& msg) {
+std::string utils::CalculateSha1(std::string_view msg) {
     unsigned char hash[SHA_DIGEST_LENGTH];
-    SHA1(reinterpret_cast<const unsigned char*>(msg.data()), msg.size(), hash);
+
+    SHA1(reinterpret_cast<const unsigned char*>(msg.data()),
+         msg.size(),
+         hash);
 
     return std::string(reinterpret_cast<char*>(hash), SHA_DIGEST_LENGTH);
 }
 
-std::string utils::HexEncode(const std::string& input) {
+std::string utils::HexEncode(std::string_view input) {
     std::stringstream ss;
     ss << std::hex << std::setfill('0');
 
     for (unsigned char c : input) {
         ss << std::setw(2) << static_cast<int>(c);
     }
+
     return ss.str();
 }
 
@@ -53,24 +56,27 @@ std::string utils::Int64ToBytes(uint64_t value) {
     return result;
 }
 
-uint64_t utils::BytesToInt64(const std::string& bytes) {
+uint64_t utils::BytesToInt64(std::string_view bytes) {
     if (bytes.size() < 8) {
         throw std::runtime_error("BytesToInt64: not enough bytes");
     }
 
     uint64_t result = 0;
+
     for (int i = 0; i < 8; ++i) {
         result = (result << 8) | static_cast<unsigned char>(bytes[i]);
     }
+
     return result;
 }
 
-std::string utils::BytesToHex(const std::string& bytes) {
+std::string utils::BytesToHex(std::string_view bytes) {
     std::stringstream ss;
     ss << std::hex << std::setfill('0');
 
     for (unsigned char c : bytes) {
         ss << std::setw(2) << static_cast<int>(c);
     }
+
     return ss.str();
 }
