@@ -1,28 +1,31 @@
 #include "utils/byte_tools.hpp"
 
-#include <iomanip>
-#include <sstream>
 #include <stdexcept>
 
 #include <openssl/sha.h>
 
-int utils::BytesToInt32(std::string_view bytes) {
+std::int32_t utils::BytesToInt32(std::string_view bytes) {
     if (bytes.size() < 4) {
-        throw std::runtime_error("BytesToInt: not enough bytes");
+        throw std::runtime_error("BytesToInt32: not enough bytes");
     }
 
-    return (static_cast<unsigned char>(bytes[0]) << 24) |
-           (static_cast<unsigned char>(bytes[1]) << 16) |
-           (static_cast<unsigned char>(bytes[2]) << 8)  |
-           (static_cast<unsigned char>(bytes[3]));
+    return (static_cast<std::uint32_t>(
+                static_cast<unsigned char>(bytes[0])) << 24) |
+           (static_cast<std::uint32_t>(
+                static_cast<unsigned char>(bytes[1])) << 16) |
+           (static_cast<std::uint32_t>(
+                static_cast<unsigned char>(bytes[2])) << 8) |
+           (static_cast<std::uint32_t>(
+                static_cast<unsigned char>(bytes[3])));
 }
 
-std::string utils::Int32ToBytes(int value) {
+std::string utils::Int32ToBytes(std::int32_t value) {
     std::string result(4, '\0');
-    result[0] = static_cast<unsigned char>((value >> 24) & 0xFF);
-    result[1] = static_cast<unsigned char>((value >> 16) & 0xFF);
-    result[2] = static_cast<unsigned char>((value >> 8)  & 0xFF);
-    result[3] = static_cast<unsigned char>( value        & 0xFF);
+    result[0] = static_cast<char>((value >> 24) & 0xFF);
+    result[1] = static_cast<char>((value >> 16) & 0xFF);
+    result[2] = static_cast<char>((value >> 8)  & 0xFF);
+    result[3] = static_cast<char>( value        & 0xFF);
+
     return result;
 }
 
@@ -51,7 +54,7 @@ std::string utils::HexEncode(std::string_view input) {
     return result;
 }
 
-std::string utils::Int64ToBytes(uint64_t value) {
+std::string utils::Int64ToBytes(std::uint64_t value) {
     std::string result(8, '\0');
     for (int i = 7; i >= 0; --i) {
         result[i] = static_cast<unsigned char>(value & 0xFF);
@@ -60,7 +63,7 @@ std::string utils::Int64ToBytes(uint64_t value) {
     return result;
 }
 
-uint64_t utils::BytesToInt64(std::string_view bytes) {
+std::uint64_t utils::BytesToInt64(std::string_view bytes) {
     if (bytes.size() < 8) {
         throw std::runtime_error("BytesToInt64: not enough bytes");
     }
