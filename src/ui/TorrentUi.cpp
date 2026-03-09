@@ -227,12 +227,9 @@ ftxui::Element TorrentUi::Render() {
 
     return vbox({
         header,
-        separator(),
         info_panel,
-        separator(),
         text("") | size(HEIGHT, EQUAL, 1),
         log_panel | flex,
-        separator(),
         footer
     });
 }
