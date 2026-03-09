@@ -15,17 +15,15 @@ std::string utils::BencodeParser::ReadFixedAmount(int amount) {
 }
 
 std::string utils::BencodeParser::ReadUntilDelimiter(char delimiter) {
-    std::string result;
-    while (index < to_decode.size() && to_decode[index] != delimiter) {
-        result += to_decode[index];
-        ++index;
-    }
+    size_t pos = to_decode.find(delimiter, index);
 
-    if (index >= to_decode.size()) {
+    if (pos == std::string::npos) {
         throw std::runtime_error("Delimiter not found");
     }
 
-    ++index;
+    std::string result = to_decode.substr(index, pos - index);
+    index = pos + 1;
+
     return result;
 }
 
@@ -93,11 +91,10 @@ void utils::BencodeParser::ProcessDict() {
     ++index;
 
     if (start_index != -1 && end_index != -1) {
-        std::string to_hash;
-        for (int i = start_index; i < end_index; ++i) {
-            to_hash += to_decode[i];
-        }
-        info_hash = CalculateSha1(to_hash);
+        info_hash = CalculateSha1(
+            std::string_view(to_decode.data() + start_index,
+                             end_index - start_index)
+        );
     }
 }
 
@@ -106,27 +103,33 @@ void utils::BencodeParser::ProcessList() {
     while (index < to_decode.size() && to_decode[index] != 'e') {
         Process();
     }
-    
+
     if (index >= to_decode.size()) {
         throw std::runtime_error("Unexpected end of list");
     }
-    
+
     ++index;
 }
 
 utils::BencodeParser::BencodeParser() : index(0) {}
 
 std::vector<std::string> utils::BencodeParser::ParseFromFile(const std::string& filename) {
-    char buffer;
     std::ifstream input_file(filename, std::ios::binary);
 
     if (!input_file.is_open()) {
         throw std::runtime_error("Cannot open file: " + filename);
     }
 
-    while (input_file.read(&buffer, 1)) {
-        to_decode += buffer;
-    }
+    input_file.seekg(0, std::ios::end);
+    size_t size = input_file.tellg();
+    input_file.seekg(0, std::ios::beg);
+
+    to_decode.resize(size);
+    input_file.read(to_decode.data(), size);
+
+    parsed.clear();
+    pieces_hashes.clear();
+    index = 0;
 
     Process();
     return parsed;
@@ -134,7 +137,13 @@ std::vector<std::string> utils::BencodeParser::ParseFromFile(const std::string& 
 
 std::vector<std::string> utils::BencodeParser::ParseFromString(std::string str) {
     to_decode = std::move(str);
+
+    parsed.clear();
+    pieces_hashes.clear();
+    index = 0;
+
     Process();
+
     return parsed;
 }
 
