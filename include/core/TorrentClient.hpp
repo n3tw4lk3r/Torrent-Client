@@ -34,6 +34,8 @@ public:
     bool IsStopRequested() const;
 
 private:
+    static constexpr int kLeftPiecesToEnterEndgame = 20;
+
     std::string peer_id;
     std::atomic<bool> is_terminated{false};
     std::atomic<bool> is_paused{false};
